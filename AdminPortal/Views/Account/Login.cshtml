@@ -1,0 +1,105 @@
+﻿@{
+    ViewData["Title"] = "Login"; //set the page name so accountc
+    Layout = null; // title bar name
+}
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Admin Portal</title> <!--set title bar name also-->
+
+    <!--css link-->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" xintegrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500&display=swap" rel="stylesheet">
+    <style>
+        /* Custom CSS to match the light grey background */
+        body {
+            font-family: 'Poppins', sans-serif; /* clean professional font */
+            color: white; /* make all text white */
+            background: url('/images/pc.jpg') no-repeat center center fixed;
+            background-size: cover;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        
+        .form-control::placeholder {
+            color: rgba(255, 255, 255, 0.7); /* softer placeholder */
+        }
+
+        .form-control {
+            background: rgba(255, 255, 255, 0.15);
+            border: none;
+            color: white;
+            border-radius: 8px;
+        }
+
+        .form-label {
+            color: white; /* labels white */
+            font-weight: 400;
+        }
+
+        /* Custom style for the green Log In button */
+        .btn-custom-green {
+            background-color: rgba(97, 179, 74, 0.85);
+            border: none;
+            color: white;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .btn-custom-green:hover {
+            background-color: rgba(78, 146, 62, 0.95);
+        }
+
+        /* Adjust the card shadow and border radius for a softer look */
+        .login-card {
+            border-radius: 15px;
+            background: rgba(255, 255, 255, 0.1); /* lighter transparency for glass */
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white; /* ensure inside card text stays white */
+        }
+    </style>
+</head>
+
+<body>
+    <div class="col-md-6 col-lg-4">
+        <div class="card login-card p-5">
+            <h2 class="card-title text-center mb-4">Login</h2>
+
+            <!-- Validation Summary -->
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+            <form asp-action="Login" method="post">
+                @Html.AntiForgeryToken()
+
+                <!-- Email Input -->
+                <div class="form-group mb-3">
+                    <label for="email" class="form-label">Email</label>
+                    <input type="email" id="email" name="email" class="form-control" placeholder="Enter your email" required />
+                </div>
+
+                <!-- Password Input -->
+                <div class="form-group mb-4">
+                    <label for="password" class="form-label">Password</label>
+                    <input type="password" id="password" name="password" class="form-control" placeholder="Enter your password" required />
+                </div>
+
+                <!-- Submit Button (Updated with custom green class) -->
+                <div class="d-grid mt-3 mb-3">
+                    <button type="submit" class="btn btn-custom-green btn-lg">Log In</button>
+                </div>
+
+                <!-- Link to Register -->
+                <p class="text-center mt-3">
+                    First time? <a asp-action="Register">Register here</a>
+                </p>
+            </form>
+        </div>
+    </div>
+</body>

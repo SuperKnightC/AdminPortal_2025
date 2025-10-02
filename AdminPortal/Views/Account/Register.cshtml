@@ -1,0 +1,81 @@
+﻿@{
+    ViewData["Title"] = "Register";
+    Layout = null; // Ensuring we control the full page look
+}
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Admin Portal</title>
+    <!-- Assuming Bootstrap is linked here -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" xintegrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
+
+    <style>
+        /* Custom CSS to match the light grey background */
+        body {
+            background-color: #f7f9fc; /* Very light grey/blue shade */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        /* Custom style for the green Register button */
+        .btn-custom-green {
+            background-color: #61b34a; /* A pleasant green color */
+            border-color: #61b34a;
+            color: white;
+            transition: background-color 0.2s ease;
+        }
+
+            .btn-custom-green:hover {
+                background-color: #4e923e; /* Slightly darker on hover */
+                border-color: #4e923e;
+                color: white;
+            }
+
+        /* Adjust the card shadow and border radius for a softer look */
+        .register-card {
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="col-md-6 col-lg-4">
+        <div class="card register-card p-5">
+            <h2 class="card-title text-center mb-4">Register</h2>
+
+            <!-- Validation Summary -->
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+            <form asp-action="Register" method="post">
+                @Html.AntiForgeryToken()
+
+                <!-- Email Input -->
+                <div class="form-group mb-3">
+                    <label for="email" class="form-label">Email</label>
+                    <input type="email" id="email" name="email" class="form-control" placeholder="Enter your email" required />
+                </div>
+
+                <!-- Password Input -->
+                <div class="form-group mb-4">
+                    <label for="password" class="form-label">Password</label>
+                    <input type="password" id="password" name="password" class="form-control" placeholder="Create a password" required />
+                </div>
+
+                <!-- Submit Button -->
+                <div class="d-grid mt-3 mb-3">
+                    <button type="submit" class="btn btn-custom-green btn-lg">Create Account</button>
+                </div>
+
+                <!-- Link to Login -->
+                <p class="text-center mt-3">
+                    Already registered? <a asp-action="Login">Log in here</a>
+                </p>
+            </form>
+        </div>
+    </div>
+</body>

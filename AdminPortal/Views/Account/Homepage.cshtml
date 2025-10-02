@@ -1,0 +1,66 @@
+﻿@{
+    ViewData["Title"] = "Dashboard";
+    Layout = null; // Assuming we are keeping the full control over the page style
+}
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Admin Portal</title>
+    <!-- Bootstrap Link -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" xintegrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
+
+    <style>
+        body {
+            background-color: #f7f9fc;
+            min-height: 100vh;
+            padding-top: 50px;
+        }
+
+        .jumbotron {
+            background-color: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+            padding: 3rem;
+        }
+
+        .logout-link {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 1.1rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <a asp-action="Login" class="logout-link text-danger">Logout</a>
+        <div class="jumbotron text-center">
+            <h1 class="display-4">Welcome Back to the Admin Portal!</h1>
+            <p class="lead">You are now logged in and viewing the secure dashboard.</p>
+            <hr class="my-4">
+            <p>Use the links below to navigate your portal.</p>
+            <a class="btn btn-primary btn-lg m-2" href="#" role="button">Manage Users</a>
+            <a class="btn btn-secondary btn-lg m-2" href="#" role="button">View Reports</a>
+        </div>
+
+        <div class="row mt-5">
+            <div class="col-md-6">
+                <div class="card p-3 shadow-sm">
+                    <h4>Recent Activity</h4>
+                    <p>No new activity in the last 24 hours.</p>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card p-3 shadow-sm">
+                    <h4>Quick Links</h4>
+                    <ul>
+                        <li><a href="#">Configuration Settings</a></li>
+                        <li><a href="#">Support Center</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
