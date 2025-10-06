@@ -16,6 +16,7 @@ builder.Services.AddScoped<DatabaseHelper>(_ => new DatabaseHelper(connectionStr
 // The DI container will automatically resolve and inject DatabaseHelper into the UserRepository constructor.
 builder.Services.AddScoped<UserRepository>();
 builder.Services.AddScoped<PackageRepository>();
+builder.Services.AddScoped<PackageItemRepository>();
 
 // Add MVC services
 builder.Services.AddControllersWithViews();

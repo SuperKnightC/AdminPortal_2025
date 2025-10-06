@@ -2,31 +2,28 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
-namespace AdminPortal.Models
+namespace AdminPortal.Models //declare the namespace
 {
-    public class PackageItem
+    public class PackageItem //model class to represent the package item entity
     {
         [Required]
-        public string name { get; set; } //itemName 
+        public string ItemName { get; set; }
 
         [Required]
         public string itemType { get; set; }
 
         [Required]
-        [Range(0.01, double.MaxValue, ErrorMessage = "Price/Point must be greater than 0.")] //point will be sum
-        public decimal priceOrPoint { get; set; } 
+        public decimal ItemPrice { get; set; }
 
         [Required]
-        public string ageCategory { get; set; } 
+        public string AgeCategory { get; set; }
 
         [Required]
-        [Range(1, int.MaxValue, ErrorMessage = "Quantity must be at least 1.")]
-        public int entryQuantity { get; set; }
+        public int EntryQty { get; set; }
 
-        [Editable(false)] // Tell MVC not to generate input form
-        public int? packageItemNo { get; set; } //? mean it can be null // manual calculation
-        public string? packageID { get; set; } // will be calculated manually
-        public int? terminalID { get; set; } // fetch from table
+        // This will be set from the controller after the main package is created.
+        public int PackageID { get; set; }
+
 
     }
 
