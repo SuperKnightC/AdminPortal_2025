@@ -14,7 +14,7 @@ namespace AdminPortal.Data //declare namespace
             _databaseHelper = databaseHelper;
         }
 
-        public async Task AddUserAsync(string email,string password) //receit credential
+        public async Task AddUserAsync(string email,string password) //receive credential
         {
             using (var conn = _databaseHelper.GetConnection()) //use dbHelper for sqlConn
             {

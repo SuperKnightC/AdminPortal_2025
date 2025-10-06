@@ -1,0 +1,232 @@
+﻿@* 1. This file is now a Razor View, strongly typed to your ViewModel *@
+@model AdminPortal.Models.PackageViewModel
+
+@{
+    ViewData["Title"] = "Insert New Package";
+}
+
+<head>
+    @* We keep your styling and Tailwind CSS setup *@
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .card {
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,.1), 0 2px 4px -1px rgba(0,0,0,.06);
+            border-radius: .75rem;
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: { 'primary-pink': '#EC4899', 'success-green': '#10B981', 'danger-red': '#EF4444' }
+                }
+            }
+        }
+    </script>
+</head>
+
+<body class="bg-gray-100 font-sans p-4 md:p-8">
+
+    <div class="max-w-6xl mx-auto">
+        <header class="mb-8">
+            <h1 class="text-4xl font-extrabold text-gray-800 mb-2">
+                <span class="text-primary-pink">Insert</span> New Package
+            </h1>
+            <p class="text-gray-500">
+                Follow the workflow to create package details and associated package items for submission.
+            </p>
+        </header>
+
+        <form asp-controller="Package" asp-action="InsertPackage" method="post" id="packageForm" class="space-y-6">
+
+            @Html.AntiForgeryToken()
+            <div asp-validation-summary="ModelOnly" class="text-danger-red p-4 bg-red-100 rounded-lg"></div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="card bg-white p-6 h-fit lg:sticky lg:top-8 space-y-4">
+                    <h2 class="text-2xl font-semibold mb-2 text-primary-pink border-b-2 pb-2">1. Create Package Details</h2>
+
+                    <div>
+                        <label asp-for="name" class="block text-sm font-medium text-gray-700 mb-1">Enter Package Name</label>
+                        <input asp-for="name" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary-pink focus:border-primary-pink transition duration-150">
+                        <span asp-validation-for="name" class="text-danger-red text-sm"></span>
+                    </div>
+
+                    <div>
+                        <label asp-for="packageType" class="block text-sm font-medium text-gray-700 mb-1">Enter Package Type</label>
+                        <select asp-for="packageType" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary-pink focus:border-primary-pink transition duration-150 bg-white">
+                            <option value="">-- Select Type --</option>
+                            <option value="Entry">Entry</option>
+                            <option value="Point">Point</option>
+                            <option value="Reward">Reward</option>
+                        </select>
+                        <span asp-validation-for="packageType" class="text-danger-red text-sm"></span>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label asp-for="effectiveDate" class="block text-sm font-medium text-gray-700 mb-1">Enter Effective Date</label>
+                            <input asp-for="effectiveDate" required type="date" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary-pink focus:border-primary-pink transition duration-150">
+                            <span asp-validation-for="effectiveDate" class="text-danger-red text-sm"></span>
+                        </div>
+                        <div>
+                            <label asp-for="LastValidDate" class="block text-sm font-medium text-gray-700 mb-1">Enter Last Valid Day</label>
+                            <input asp-for="LastValidDate" required type="date" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary-pink focus:border-primary-pink transition duration-150">
+                            <span asp-validation-for="LastValidDate" class="text-danger-red text-sm"></span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label asp-for="remark" class="block text-sm font-medium text-gray-700 mb-1">Enter Remark (Manual/Notion Link)</label>
+                        <textarea asp-for="remark" rows="3" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary-pink focus:border-primary-pink transition duration-150" placeholder="Add manual notes..."></textarea>
+                        <span asp-validation-for="remark" class="text-danger-red text-sm"></span>
+                    </div>
+                </div>
+
+                <div class="space-y-6">
+                    <div id="packageItemsContainer" class="space-y-6">
+
+                        @for (var i = 0; i < Model.Items.Count; i++)
+                        {
+                            <div class="card bg-white p-6 package-item-card border-l-4 border-success-green">
+                                <h3 class="text-xl font-semibold mb-4 text-success-green flex justify-between items-center">
+                                    Package Item #@(i + 1)
+                                    @if (i > 0)
+                                    {
+                                        <button type="button" onclick="this.closest('.package-item-card').remove()" class="text-danger-red hover:text-danger-red/80 transition duration-150 p-1 rounded-full">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                        </button>
+                                    }
+                                </h3>
+
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div class="col-span-1 md:col-span-2">
+                                        <label asp-for="Items[i].Name" class="block text-sm font-medium text-gray-700 mb-1">Select Attraction</label>
+                                        <select asp-for="Items[i].Name" required class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white">
+                                            <option value="">-- Select --</option>
+                                            <option value="Water Park">Water Park</option>
+                                            <option value="WaterWorld">WaterWorld</option>
+                                            <option value="Roller Coaster">Roller Coaster</option>
+                                        </select>
+                                        <span asp-validation-for="Items[i].Name" class="text-danger-red text-sm"></span>
+                                    </div>
+
+                                    <div>
+                                        <label asp-for="Items[i].itemType" class="block text-sm font-medium text-gray-700 mb-1">Select Item Type</label>
+                                        <select asp-for="Items[i].itemType" required class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white">
+                                            <option value="">-- Select --</option>
+                                            <option value="Entry">Entry</option>
+                                            <option value="Point">Point</option>
+                                            <option value="Reward">Reward Point</option>
+                                        </select>
+                                        <span asp-validation-for="Items[i].itemType" class="text-danger-red text-sm"></span>
+                                    </div>
+                                    <div>
+                                        <label asp-for="Items[i].PricePoint" class="block text-sm font-medium text-gray-700 mb-1">Enter Value (Price/Point)</label>
+                                        <input asp-for="Items[i].PricePoint" type="number" step="0.01" min="0" required placeholder="e.g., 29.99" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                                        <span asp-validation-for="Items[i].PricePoint" class="text-danger-red text-sm"></span>
+                                    </div>
+                                    <div>
+                                        <label asp-for="Items[i].AgeCategory" class="block text-sm font-medium text-gray-700 mb-1">Age Category</label>
+                                        <select asp-for="Items[i].AgeCategory" required class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white">
+                                            <option value="">-- Select --</option>
+                                            <option value="A1">Adult</option>
+                                            <option value="A2">Child</option>
+                                            <option value="A3">Senior</option>
+                                        </select>
+                                        <span asp-validation-for="Items[i].AgeCategory" class="text-danger-red text-sm"></span>
+                                    </div>
+                                    <div>
+                                        <label asp-for="Items[i].EntryQty" class="block text-sm font-medium text-gray-700 mb-1">Entry Quantity</label>
+                                        <input asp-for="Items[i].EntryQty" type="number" min="1" required placeholder="e.g., 1" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                                        <span asp-validation-for="Items[i].EntryQty" class="text-danger-red text-sm"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+
+                    <button type="button" onclick="addPackageItem()" class="w-full py-3 px-6 bg-success-green text-white font-semibold rounded-lg shadow-md hover:bg-success-green/90 transition duration-150 flex items-center justify-center text-lg">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        Create more Package Item? (Yes)
+                    </button>
+                </div>
+            </div>
+
+            <div class="pt-6 border-t border-gray-200 mt-6 flex justify-end">
+                <button type="submit" class="py-3 px-8 bg-primary-pink text-white font-bold rounded-lg shadow-lg hover:bg-primary-pink/90 transition duration-150 text-lg">
+                    Submit Package for Approval
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <div id="itemTemplate" style="display: none;">
+        <div class="card bg-white p-6 package-item-card border-l-4 border-success-green">
+            <h3 class="text-xl font-semibold mb-4 text-success-green flex justify-between items-center">
+                Package Item #__INDEX_PLACEHOLDER__
+                <button type="button" onclick="this.closest('.package-item-card').remove()" class="text-danger-red hover:text-danger-red/80 transition duration-150 p-1 rounded-full">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                </button>
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="col-span-1 md:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Select Attraction</label>
+                    <select name="Items[__INDEX__].Name" required class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white">
+                        <option value="">-- Select --</option>
+                        <option value="Water Park">Water Park</option>
+                        <option value="WaterWorld">WaterWorld</option>
+                        <option value="Roller Coaster">Roller Coaster</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Select Item Type</label>
+                    <select name="Items[__INDEX__].itemType" required class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white">
+                        <option value="">-- Select --</option>
+                        <option value="Entry">Entry</option>
+                        <option value="Point">Point</option>
+                        <option value="Reward">Reward Point</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Enter Value (Price/Point)</label>
+                    <input name="Items[__INDEX__].PricePoint" type="number" step="0.01" min="0" required placeholder="e.g., 29.99" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Age Category</label>
+                    <select name="Items[__INDEX__].AgeCategory" required class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white">
+                        <option value="">-- Select --</option>
+                        <option value="A1">Adult</option>
+                        <option value="A2">Child</option>
+                        <option value="A3">Senior</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Entry Quantity</label>
+                    <input name="Items[__INDEX__].EntryQty" type="number" min="1" required placeholder="e.g., 1" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @section Scripts {
+        @{
+            await Html.RenderPartialAsync("_ValidationScriptsPartial");
+        }
+    }
+
+    <script>
+        function addPackageItem() {
+            const container = document.getElementById('packageItemsContainer');
+            const itemIndex = container.getElementsByClassName('package-item-card').length;
+            const template = document.getElementById('itemTemplate').innerHTML;
+            const newHtml = template.replace(/__INDEX__/g, itemIndex).replace(/__INDEX_PLACEHOLDER__/g, itemIndex + 1);
+            const newItem = document.createElement('div');
+            newItem.innerHTML = newHtml;
+            // We need to append the actual card, which is the first child of the div we created
+            container.appendChild(newItem.firstElementChild);
+        }
+    </script>
+</body>

@@ -1,66 +1,64 @@
 ﻿@{
-    ViewData["Title"] = "Dashboard";
-    Layout = null; // Assuming we are keeping the full control over the page style
+    Layout = null;
+    ViewData["Title"] = "Homepage";
 }
 
+<!DOCTYPE html>
+<html lang="en">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - Admin Portal</title>
-    <!-- Bootstrap Link -->
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" xintegrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
-
-    <style>
-        body {
-            background-color: #f7f9fc;
-            min-height: 100vh;
-            padding-top: 50px;
-        }
-
-        .jumbotron {
-            background-color: #ffffff;
-            border-radius: 10px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
-            padding: 3rem;
-        }
-
-        .logout-link {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            font-size: 1.1rem;
-        }
-    </style>
+    <!-- Link to Bootstrap 5 CSS via CDN for styling the navbar -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" xintegrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
 </head>
-
 <body>
-    <div class="container">
-        <a asp-action="Login" class="logout-link text-danger">Logout</a>
-        <div class="jumbotron text-center">
-            <h1 class="display-4">Welcome Back to the Admin Portal!</h1>
-            <p class="lead">You are now logged in and viewing the secure dashboard.</p>
-            <hr class="my-4">
-            <p>Use the links below to navigate your portal.</p>
-            <a class="btn btn-primary btn-lg m-2" href="#" role="button">Manage Users</a>
-            <a class="btn btn-secondary btn-lg m-2" href="#" role="button">View Reports</a>
-        </div>
-
-        <div class="row mt-5">
-            <div class="col-md-6">
-                <div class="card p-3 shadow-sm">
-                    <h4>Recent Activity</h4>
-                    <p>No new activity in the last 24 hours.</p>
-                </div>
-            </div>
-            <div class="col-md-6">
-                <div class="card p-3 shadow-sm">
-                    <h4>Quick Links</h4>
-                    <ul>
-                        <li><a href="#">Configuration Settings</a></li>
-                        <li><a href="#">Support Center</a></li>
+    <header>
+        <!-- Navbar structure based on the request: Homepage, Package (dropdown), Profile, About Us -->
+        <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow">
+            <div class="container-fluid">
+                <a class="navbar-brand" href="#">Homepage</a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavDropdown" aria-controls="navbarNavDropdown" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarNavDropdown">
+                    <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                        <!-- 1. Package Dropdown -->
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownMenuLink" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                Package
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="navbarDropdownMenuLink">
+                                <li><a class="dropdown-item" href="/Package/InsertPackage">Insert</a></li>
+                                <li><a class="dropdown-item" href="#">View Active/Approved</a></li>
+                                <li><a class="dropdown-item" href="#">View Rejected/Pending</a></li>
+                            </ul>
+                        </li>
+                        <!-- 2. Profile Button -->
+                        <li class="nav-item">
+                            <a class="nav-link" href="#">Profile</a>
+                        </li>
+                        <!-- 3. About Us Button -->
+                        <li class="nav-item">
+                            <a class="nav-link" href="#">About Us</a>
+                        </li>
                     </ul>
+
+                    <!-- Right-aligned Logout Button -->
+                    <form class="d-flex">
+                        <a class="btn btn-outline-danger" asp-controller="Account" asp-action="Login">Log Out</a>
+                    </form>
                 </div>
             </div>
-        </div>
-    </div>
+        </nav>
+    </header>
+
+    <main class="container mt-4">
+        <h1 class="display-4 text-center">Welcome to the Admin Dashboard</h1>
+        <p class="text-center text-muted">Use the navigation bar above to manage packages and view profile settings.</p>
+    </main>
+
+    <!-- Link to Bootstrap 5 JS via CDN for dropdown functionality -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" xintegrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
 </body>
+</html>
