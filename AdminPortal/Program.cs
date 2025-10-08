@@ -17,6 +17,8 @@ builder.Services.AddScoped<DatabaseHelper>(_ => new DatabaseHelper(connectionStr
 builder.Services.AddScoped<UserRepository>();
 builder.Services.AddScoped<PackageRepository>();
 builder.Services.AddScoped<PackageItemRepository>();
+builder.Services.AddScoped<AgeCategoryRepository>();
+builder.Services.AddScoped<AttractionRepository>();
 
 // Add MVC services
 builder.Services.AddControllersWithViews();

@@ -1,17 +1,24 @@
-﻿using System;
-using System.Collections.Generic;
+﻿// AdminPortal.Models/Package.cs
+
+using AdminPortal.Models;
 using System.ComponentModel.DataAnnotations;
+
 
 namespace AdminPortal.Models
 {
-  
-    public class PackageViewModel //view model to handle the data from view to controller
+    public class PackageViewModel
     {
         [Required(ErrorMessage = "Package Name is required.")]
         public string Name { get; set; }
 
         [Required(ErrorMessage = "Package Type is required.")]
         public string packageType { get; set; }
+
+        [Required]
+        public decimal Price { get; set; } // <-- ADD THIS
+
+        [Required]
+        public int Point { get; set; } // <-- ADD THIS
 
         [Required(ErrorMessage = "Effective Date is required.")]
         public DateTime effectiveDate { get; set; }
@@ -20,8 +27,11 @@ namespace AdminPortal.Models
         public DateTime LastValidDate { get; set; }
 
         public string? remark { get; set; }
-        public int validDays { get; set; }
-        public List<PackageItem> Items { get; set; } = new List<PackageItem>();
 
+        // Make these nullable so they don't cause validation issues
+        public string? PackageNo { get; set; }
+        public string? ImageID { get; set; }
+
+        public List<PackageItem> Items { get; set; } = new List<PackageItem>();
     }
 }

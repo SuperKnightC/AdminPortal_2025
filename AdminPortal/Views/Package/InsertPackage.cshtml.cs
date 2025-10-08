@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace AdminPortal.Views.Package
 {
-    public class packageInsertModel : PageModel
+    public class InsertPackageModel : PageModel
     {
         public void OnGet()
         {
