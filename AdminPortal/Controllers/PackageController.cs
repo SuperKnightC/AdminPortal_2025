@@ -13,13 +13,19 @@ namespace AdminPortal.Controllers
         private readonly PackageItemRepository _packageItemRepository;
         private readonly AgeCategoryRepository _ageCategoryRepository;
         private readonly AttractionRepository _attractionRepository;
+        private readonly PackageImageRepository _packageImageRepository;
 
-        public PackageController(PackageRepository packageRepository, PackageItemRepository packageItemRepository, AgeCategoryRepository ageCategoryRepository, AttractionRepository attractionRepository)
+        public PackageController(PackageRepository packageRepository, 
+               PackageItemRepository packageItemRepository, 
+               AgeCategoryRepository ageCategoryRepository, 
+               AttractionRepository attractionRepository,
+               PackageImageRepository packageImageRepository)
         {
             _packageRepository = packageRepository;
             _packageItemRepository = packageItemRepository;
             _ageCategoryRepository = ageCategoryRepository;
             _attractionRepository = attractionRepository;
+            _packageImageRepository = packageImageRepository;
         }
 
         [HttpGet]
@@ -44,48 +50,57 @@ namespace AdminPortal.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> InsertPackage(PackageViewModel model)
         {
-            // If the custom validation in the models fails, return the view with the errors
             if (!ModelState.IsValid)
             {
+                // ... return view with dropdown data if validation fails
+                ViewData["AgeCategories"] = new SelectList(await _ageCategoryRepository.GetAllAsync(), "AgeCode", "DisplayText");
+                ViewData["Attractions"] = new SelectList(await _attractionRepository.GetAllActiveAsync(), "Name", "Name");
                 return View("InsertPackage", model);
             }
 
             try
             {
-                // 1. Insert the main package and get its new ID back
-                int newPackageId = await _packageRepository.InsertPackage(model);
-
-                // 2. Loop through the items submitted from the form
+                // 1. Process items and calculate the total price FIRST
+                decimal totalPrice = 0;
                 foreach (var item in model.Items)
                 {
-                    item.PackageID = newPackageId;
-
-                    // This is the crucial logic to process the single 'Value' input
-                    // into the correct nullable database field.
-                    item.Price = null; // Reset both to null first
+                    // Reset both properties to null first
+                    item.Price = null;
                     item.Point = null;
 
+                    // Set the correct property based on itemType and the input Value
                     if (item.itemType == "Entry")
                     {
                         item.Price = item.Value;
+                        totalPrice += item.Value; // Add the item's price to the total
                     }
                     else if (item.itemType == "Point" || item.itemType == "Reward")
                     {
-                        item.Point = (int)item.Value; // Cast the decimal Value to an int for the Point column
+                        item.Point = (int)item.Value;
                     }
+                }
 
-                    // 3. Insert the fully processed package item
+                // 2. Overwrite the main package price with the calculated sum
+                model.Price = totalPrice;
+
+                // 3. Insert the main package with the correct, summed-up price to get its ID
+                int newPackageId = await _packageRepository.InsertPackage(model);
+
+                // 4. Now, loop through the items again to assign the new PackageID and save them
+                foreach (var item in model.Items)
+                {
+                    item.PackageID = newPackageId;
                     await _packageItemRepository.InsertPackageItem(item);
                 }
 
-                // Redirect to a success page (using "Login" as a placeholder)
                 return RedirectToAction("Login");
             }
             catch (Exception ex)
             {
-                // In case of a database error, show a generic message and log the exception
-                ModelState.AddModelError("", "An unexpected error occurred while saving the package. Please try again.");
-                // TODO: Log the exception 'ex' for debugging purposes
+                ModelState.AddModelError("", "An unexpected error occurred while saving the package.");
+                // Log the exception 'ex'
+                ViewData["AgeCategories"] = new SelectList(await _ageCategoryRepository.GetAllAsync(), "AgeCode", "DisplayText");
+                ViewData["Attractions"] = new SelectList(await _attractionRepository.GetAllActiveAsync(), "Name", "Name");
                 return View("InsertPackage", model);
             }
         }

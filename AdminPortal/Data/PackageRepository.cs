@@ -46,7 +46,7 @@ namespace AdminPortal.Data //set the namespace for reference
                 cmd.Parameters.AddWithValue("@Price", package.Price);
                 cmd.Parameters.AddWithValue("@Point", package.Point);
                 cmd.Parameters.AddWithValue("@LastValidDate", package.LastValidDate);
-                cmd.Parameters.AddWithValue("@Remark", (object)package.remark ?? DBNull.Value); // Note: Your INSERT doesn't have @remark, you may want to add it.
+                cmd.Parameters.AddWithValue("@Remark", (object)package.remark ?? DBNull.Value); 
 
                 // == Calculated Value ==
                 cmd.Parameters.AddWithValue("@ValidDays", validDays);
@@ -56,8 +56,8 @@ namespace AdminPortal.Data //set the namespace for reference
                 cmd.Parameters.AddWithValue("@GroupEntityID", 1); // Fixed value
                 cmd.Parameters.AddWithValue("@TerminalGroupID", 1); // Fixed value
                 cmd.Parameters.AddWithValue("@ProductID", 1); // Fixed value
-                cmd.Parameters.AddWithValue("@ImageID", "30"); // Fixed value
-                cmd.Parameters.AddWithValue("@DaysPass", 7); // Fixed value (example)
+                cmd.Parameters.AddWithValue("@ImageID", (object)package.ImageID ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@DaysPass", 7); // Fixed value for now
                 cmd.Parameters.AddWithValue("@Link", "#"); // Fixed value
                 cmd.Parameters.AddWithValue("@RecordStatus", "Pending"); // Default status
                 cmd.Parameters.AddWithValue("@CreatedUserID", 1); // Fixed user ID

@@ -39,13 +39,22 @@
         <h1 class="text-4xl font-extrabold text-gray-800 mb-2"><span class="text-primary-pink">Insert</span> New Package</h1>
         <p class="text-gray-500 mb-8">Follow the workflow to create package details and associated package items.</p>
 
-        <form asp-controller="Package" asp-action="InsertPackage" method="post" id="packageForm" class="space-y-6">
+        <form asp-controller="Package" asp-action="InsertPackage" method="post" id="packageForm" class="space-y-6" enctype="multipart/form-data">
             @Html.AntiForgeryToken()
             <div asp-validation-summary="ModelOnly" class="text-danger-red p-4 bg-red-100 rounded-lg"></div>
 
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div class="card bg-white p-6 h-fit space-y-4">
                     <h2 class="text-2xl font-semibold mb-2 text-primary-pink border-b-2 pb-2">1. Create Package Details</h2>
+
+                    <div>
+                        <label asp-for="PackageImage" class="block text-sm font-medium text-gray-700 mb-1">Package Image</label>
+                        <div class="mt-1 flex items-center">
+                            <img id="image-preview" src="https://via.placeholder.com/150" alt="Image preview" class="h-24 w-24 rounded-lg object-cover">
+                            <input asp-for="PackageImage" type="file" accept="image/*" class="ml-4 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-pink-50 file:text-primary-pink hover:file:bg-pink-100">
+                        </div>
+                    </div>
+
                     <div>
                         <label asp-for="Name" class="block text-sm font-medium text-gray-700 mb-1">Package Name</label>
                         <input asp-for="Name" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary-pink focus:border-primary-pink">
@@ -93,11 +102,8 @@
                                 </h3>
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div class="col-span-1 md:col-span-2">
-                                        <label asp-for="Items[i].ItemName" class="block text-sm font-medium text-gray-700 mb-1">Select Attraction</label>
-                                        <select asp-for="Items[i].ItemName"
-                                                asp-items="@(ViewData["Attractions"] as SelectList)"
-                                                required
-                                                class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white">
+                                        <label asp-for="Items[i].ItemName" class="block text-sm font-medium text-gray-700 mb-1">Attraction</label>
+                                        <select asp-for="Items[i].ItemName" asp-items="@(ViewData["Attractions"] as SelectList)" required class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white">
                                             <option value="">-- Select --</option>
                                         </select>
                                         <span asp-validation-for="Items[i].ItemName" class="text-danger-red text-sm"></span>
@@ -157,7 +163,7 @@
             </h3>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="col-span-1 md:col-span-2">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Select Attraction</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Attraction</label>
                     <select name="Items[__INDEX__].ItemName" required class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white attraction-select">
                         <option value="">-- Select --</option>
                     </select>
@@ -232,8 +238,8 @@
             function addPackageItem() {
                 const index = container.querySelectorAll('.package-item-card').length;
                 const clone = template.content.cloneNode(true);
-                const newCard = clone.firstElementChild;
-                // Populate the Age Category dropdown in the new item
+
+                // Populate the Age Category dropdown
                 const ageCategorySelect = clone.querySelector('.age-category-select');
                 if (ageCategorySelect) {
                     ageCategories.forEach(category => {
@@ -243,7 +249,9 @@
                         ageCategorySelect.appendChild(option);
                     });
                 }
-                const attractionSelect = newCard.querySelector('.attraction-select');
+
+                // Populate the Attraction dropdown
+                const attractionSelect = clone.querySelector('.attraction-select');
                 if (attractionSelect) {
                     attractions.forEach(attraction => {
                         const option = document.createElement('option');
@@ -253,7 +261,7 @@
                     });
                 }
 
-                // Update names and placeholders
+                // Update names and placeholders for the new item
                 clone.querySelectorAll('[name*="__INDEX__"]').forEach(el => {
                     el.name = el.name.replace('__INDEX__', index);
                 });
@@ -264,8 +272,21 @@
 
                 container.appendChild(clone);
                 const newCard = container.lastElementChild;
-                toggleItemInputs(newCard);
+                toggleItemInputs(newCard); // Run logic for the new card
+
+                const mainPackageType = document.getElementById('packageType').value;
+                if (mainPackageType) {
+                    // Find the dropdown in the new card and set its value
+                    const newItemTypeSelect = newCard.querySelector('.item-type-select');
+                    if (newItemTypeSelect) {
+                        newItemTypeSelect.value = mainPackageType;
+                    }
+                }
+
             }
+
+            // Event Listeners
+            addBtn.addEventListener('click', addPackageItem);
 
             container.addEventListener('click', e => {
                 if (e.target.closest('.remove-item-btn')) {
@@ -279,10 +300,16 @@
                 }
             });
 
-            addBtn.addEventListener('click', addPackageItem);
-
-            // Run for initial items
+            // Initial State Logic
             container.querySelectorAll('.package-item-card').forEach(toggleItemInputs);
+
+            document.getElementById('PackageImage').addEventListener('change', function(event) {
+                const preview = document.getElementById('image-preview');
+                const file = event.target.files[0];
+                if (file) {
+                    preview.src = URL.createObjectURL(file);
+                }
+            });
         });
     </script>
 </body>

@@ -1,12 +1,15 @@
-﻿// AdminPortal.Models/Package.cs
-
-using AdminPortal.Models;
+﻿using Microsoft.AspNetCore.Http;
+using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace AdminPortal.Models
 {
-    public class PackageViewModel
+    //This Model is for package creation and insertion to the database
+
+    #region --Package Insert View Model--
+    public class PackageViewModel : IValidatableObject
     {
         [Required(ErrorMessage = "Package Name is required.")]
         public string Name { get; set; }
@@ -15,10 +18,10 @@ namespace AdminPortal.Models
         public string packageType { get; set; }
 
         [Required]
-        public decimal Price { get; set; } // <-- ADD THIS
+        public decimal Price { get; set; }
 
         [Required]
-        public int Point { get; set; } // <-- ADD THIS
+        public int Point { get; set; }
 
         [Required(ErrorMessage = "Effective Date is required.")]
         public DateTime effectiveDate { get; set; }
@@ -28,10 +31,91 @@ namespace AdminPortal.Models
 
         public string? remark { get; set; }
 
-        // Make these nullable so they don't cause validation issues
         public string? PackageNo { get; set; }
+
         public string? ImageID { get; set; }
 
+        public IFormFile? PackageImage { get; set; }
+
         public List<PackageItem> Items { get; set; } = new List<PackageItem>();
+
+        // This is your custom validation logic from before
+        public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+        {
+            if (packageType == "Entry" && Price <= 0)
+            {
+                yield return new ValidationResult("Price is required for Entry type packages.", new[] { nameof(Price) });
+            }
+            if ((packageType == "Point" || packageType == "Reward") && Point <= 0)
+            {
+                yield return new ValidationResult("Point value is required for Point or Reward type packages.", new[] { nameof(Point) });
+            }
+        }
     }
+    #endregion
+
+    #region--PackageItem Insert View Model--
+    public class PackageItem : IValidatableObject
+    {
+        [Required]
+        public string ItemName { get; set; }
+
+        [Required]
+        public string itemType { get; set; }
+
+        [NotMapped]
+        public decimal Value { get; set; }
+
+        public decimal? Price { get; set; }
+
+        public int? Point { get; set; }
+
+        [Required]
+        public string AgeCategory { get; set; }
+
+        [Required]
+        public int EntryQty { get; set; }
+
+        public int PackageID { get; set; }
+
+        public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+        {
+            if (itemType == "Entry" || itemType == "Point" || itemType == "Reward")
+            {
+                if (Value <= 0)
+                {
+                    yield return new ValidationResult("A value greater than zero is required.", new[] { nameof(Value) });
+                }
+            }
+        }
+    }
+    #endregion
+
+    #region-- AgeCategory Model--
+
+    // Pull Age Category from db
+    public class AgeCategory
+    {
+        public string AgeCode { get; set; }
+        public string CategoryName { get; set; }
+        public string DisplayText => $"{AgeCode} - {CategoryName}";
+    }
+    #endregion
+
+    #region -- Attraction Model--
+    // Get Attraction from db
+    public class Attraction
+    {
+        public string Name { get; set; }
+    }
+    #endregion
+
+    #region-- Package Image Insert Model--
+    // PackageImages Insert to db
+    public class PackageImage
+    {
+        public int ImageID { get; set; }
+        public string ImageURL { get; set; }
+    }
+    #endregion
 }

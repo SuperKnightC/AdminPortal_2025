@@ -19,6 +19,7 @@ builder.Services.AddScoped<PackageRepository>();
 builder.Services.AddScoped<PackageItemRepository>();
 builder.Services.AddScoped<AgeCategoryRepository>();
 builder.Services.AddScoped<AttractionRepository>();
+builder.Services.AddScoped<PackageImageRepository>();
 
 // Add MVC services
 builder.Services.AddControllersWithViews();

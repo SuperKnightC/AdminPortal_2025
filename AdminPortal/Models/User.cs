@@ -1,5 +1,6 @@
 ﻿namespace AdminPortal.Models
-{
+{ 
+    //this class responsible for user login variable
     public class User
     {
         public int Id { get; set; }

@@ -1,0 +1,49 @@
+﻿using System;
+using System.Collections.Generic;
+
+namespace AdminPortal.Models
+{
+    //Thiw Models are essentially used for displaying Packages and Its details on the dashboard pages
+
+    #region--Package Summary View Model-- 
+    //This is the big view, front dashboard view
+    public class PackageSummaryViewModel
+    {
+        public int Id { get; set; }
+        public string Name { get; set; }
+        public string PackageType { get; set; }
+        public int Quantity { get; set; }
+        public string Category { get; set; }
+        public string ImageUrl { get; set; }
+    }
+    #endregion  
+
+
+    #region--Package Detail View Model--
+    // Detailed view after clicking on a package from the summary view
+    public class PackageDetailViewModel
+    {
+        public int Id { get; set; }
+        public string Name { get; set; }
+        public string PackageType { get; set; }
+        public DateTime EffectiveDate { get; set; }
+        public DateTime LastValidDate { get; set; }
+        public int ValidDays { get; set; }
+        public string Status { get; set; }
+        public string ImageUrl { get; set; }
+        public List<PackageItemDetail> Items { get; set; } = new List<PackageItemDetail>();
+    }
+    #endregion
+
+
+    #region-- Helper Class for Package Item Details --
+    // Display each attraction/item within a package
+    public class PackageItemDetail
+    {
+        public string ItemName { get; set; }
+        public decimal Price { get; set; }
+        public int Point { get; set; }
+        public string Category { get; set; }
+    }
+    #endregion
+}
