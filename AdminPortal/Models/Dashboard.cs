@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace AdminPortal.Models
 {
-    //Thiw Models are essentially used for displaying Packages and Its details on the dashboard pages
+    //This Models are essentially used for displaying Packages and Its details on the dashboard pages
 
     #region--Package Summary View Model-- 
     //This is the big view, front dashboard view

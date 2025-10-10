@@ -7,13 +7,17 @@ namespace AdminPortal.Data //declare namespace
 
     public class UserRepository //define this class
     {
-        private readonly DatabaseHelper _databaseHelper; //accept database helper via DI
+        //This repo handle user login and registration
 
+        #region -- Constructor and DI, DB helper --
+        private readonly DatabaseHelper _databaseHelper; //accept database helper via DI
          public UserRepository(DatabaseHelper databaseHelper)
         {
             _databaseHelper = databaseHelper;
         }
+        #endregion
 
+        #region -- Add User Method (not used) --
         public async Task AddUserAsync(string email,string password) //receive credential
         {
             using (var conn = _databaseHelper.GetConnection()) //use dbHelper for sqlConn
@@ -28,6 +32,9 @@ namespace AdminPortal.Data //declare namespace
 
             }
         }
+        #endregion
+
+        #region -- Get User By Email Method --
         public async Task<User?> GetUserByEmailAsync(string email)
         {
             using (var conn = _databaseHelper.GetConnection())
@@ -53,6 +60,7 @@ namespace AdminPortal.Data //declare namespace
 
             return null;
         }
+        #endregion
     }
 }
     

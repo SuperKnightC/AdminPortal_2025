@@ -25,19 +25,45 @@ namespace AdminPortal.Data
                 await conn.OpenAsync();
 
                 var cmd = new SqlCommand(
-                    @"INSERT INTO PackageItem(PackageID, ItemName, itemType, Price, Point, AgeCategory, EntryQty) 
+                    @"INSERT INTO PackageItem(PackageID, ItemName, ItemType, ItemPrice, ItemPoint, AgeCategory, EntryQty) 
                       VALUES (@PackageID, @ItemName, @itemType, @Price, @Point, @AgeCategory, @EntryQty)", conn);
 
                 cmd.Parameters.AddWithValue("@PackageID", item.PackageID);
                 cmd.Parameters.AddWithValue("@ItemName", item.ItemName);
-                cmd.Parameters.AddWithValue("@itemType", item.itemType);
+                cmd.Parameters.AddWithValue("@ItemType", item.itemType);
                 cmd.Parameters.AddWithValue("@AgeCategory", item.AgeCategory);
                 cmd.Parameters.AddWithValue("@EntryQty", item.EntryQty);
-                cmd.Parameters.AddWithValue("@Price", (object)item.Price ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@Point", (object)item.Point ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@ItemPrice", (object)item.Price ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@ItemPoint", (object)item.Point ?? DBNull.Value);
 
                 await cmd.ExecuteNonQueryAsync();
             }
+        }
+        public async Task<List<PackageItem>> GetItemsByPackageIdAsync(int packageId)
+        {
+            var items = new List<PackageItem>();
+            using (var conn = _databaseHelper.GetConnection())
+            {
+                await conn.OpenAsync();
+                var cmd = new SqlCommand("SELECT * FROM PackageItem WHERE PackageID = @PackageID", conn);
+                cmd.Parameters.AddWithValue("@PackageID", packageId);
+
+                using (var reader = await cmd.ExecuteReaderAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        items.Add(new PackageItem
+                        {
+                            ItemName = reader["ItemName"].ToString(),
+                            Price = reader["ItemPrice"] as decimal?,
+                            Point = reader["ItemPoint"] as int?,
+                            AgeCategory = reader["AgeCategory"].ToString()
+                        });
+                    }
+                }
+            }
+            return items;
+
         }
     }
     #endregion
@@ -135,6 +161,28 @@ namespace AdminPortal.Data
                 return Convert.ToInt32(result);
             }
         }
+        public async Task<string> GetUrlByIdAsync(int imageId)
+        {
+            using (var conn = _databaseHelper.GetConnection())
+            {
+                await conn.OpenAsync();
+                var cmd = new SqlCommand("SELECT ImageURL FROM packageImages WHERE ImageID = @ImageID", conn);
+                cmd.Parameters.AddWithValue("@ImageID", imageId);
+
+                // ExecuteScalarAsync is efficient for getting a single value
+                object result = await cmd.ExecuteScalarAsync();
+
+                // Return the URL string, or null if no image was found
+                return result?.ToString();
+            }
+        }
+
+
+
+
     }
     #endregion
+    
+    
+
 }

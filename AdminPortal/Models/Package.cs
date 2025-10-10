@@ -118,4 +118,29 @@ namespace AdminPortal.Models
         public string ImageURL { get; set; }
     }
     #endregion
+    
+    public class Package
+    {
+        public int PackageID { get; set; }
+        public string? PackageNo { get; set; }
+        public string Name { get; set; }
+        public string PackageType { get; set; }
+        public decimal Price { get; set; }
+        public int Point { get; set; }
+        public int ValidDays { get; set; }
+        public int DaysPass { get; set; }
+        public DateTime LastValidDate { get; set; }
+        public string? Link { get; set; }
+        public string Status { get; set; }
+        public DateTime CreatedDate { get; set; }
+        public int CreatedUserID { get; set; }
+        public DateTime ModifiedDate { get; set; }
+        public int ModifiedUserID { get; set; }
+        public int GroupEntityID { get; set; }
+        public int TerminalGroupID { get; set; }
+        public long ProductID { get; set; }
+        public string? ImageID { get; set; }
+        public string? Remark { get; set; }
+
+    }
 }

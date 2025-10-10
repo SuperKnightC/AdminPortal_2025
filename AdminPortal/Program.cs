@@ -24,6 +24,17 @@ builder.Services.AddScoped<PackageImageRepository>();
 // Add MVC services
 builder.Services.AddControllersWithViews();
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowReactApp",
+        policy =>
+        {
+            // The URL your React app runs on. Vite's default is 5173.
+            policy.WithOrigins("http://localhost:5173")
+                  .AllowAnyHeader()
+                  .AllowAnyMethod();
+        });
+});
 
 
 var app = builder.Build();
@@ -38,7 +49,7 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 
 app.UseRouting();
-
+app.UseCors("AllowReactApp");
 // Enable CSRF protection check globally for MVC controllers
 app.UseAntiforgery();
 
@@ -47,6 +58,6 @@ app.UseAuthorization();
 // MVC route mapping
 app.MapControllerRoute(
     name: "default",
-    pattern: "{controller=Account}/{action=Login}/{id?}");
+    pattern: "{controller=Dashboard}/{action=Index}/{id?}");
 
 app.Run();
