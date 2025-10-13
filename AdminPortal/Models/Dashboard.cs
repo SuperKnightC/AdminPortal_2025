@@ -5,7 +5,7 @@ namespace AdminPortal.Models
 {
     //This Models are essentially used for displaying Packages and Its details on the dashboard pages
 
-    #region--Package Summary View Model-- 
+    #region-- Package Summary View Model -- 
     //This is the big view, front dashboard view
     public class PackageSummaryViewModel
     {
@@ -19,7 +19,7 @@ namespace AdminPortal.Models
     #endregion  
 
 
-    #region--Package Detail View Model--
+    #region-- Package Detail View Model --
     // Detailed view after clicking on a package from the summary view
     public class PackageDetailViewModel
     {

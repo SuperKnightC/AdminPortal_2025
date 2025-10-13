@@ -8,7 +8,7 @@ namespace AdminPortal.Models
 {
     //This Model is for package creation and insertion to the database
 
-    #region --Package Insert View Model--
+    #region -- Package Frontend Insert View Model --
     public class PackageViewModel : IValidatableObject
     {
         [Required(ErrorMessage = "Package Name is required.")]
@@ -54,7 +54,7 @@ namespace AdminPortal.Models
     }
     #endregion
 
-    #region--PackageItem Insert View Model--
+    #region-- PackageItem Model for DB Mapping --
     public class PackageItem : IValidatableObject
     {
         [Required]
@@ -118,7 +118,8 @@ namespace AdminPortal.Models
         public string ImageURL { get; set; }
     }
     #endregion
-    
+
+    #region -- Package Model for DB Mapping --
     public class Package
     {
         public int PackageID { get; set; }
@@ -143,4 +144,5 @@ namespace AdminPortal.Models
         public string? Remark { get; set; }
 
     }
+    #endregion
 }

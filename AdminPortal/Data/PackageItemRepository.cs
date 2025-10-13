@@ -68,7 +68,7 @@ namespace AdminPortal.Data
     }
     #endregion
 
-    #region--Age Category Fetch--
+    #region-- Age Category Fetch --
     // Consolidated Class: Handles Age Categories
     public class AgeCategoryRepository
     {
@@ -103,7 +103,7 @@ namespace AdminPortal.Data
     }
     #endregion
 
-    #region--Attraction Fetch--
+    #region-- Attraction Fetch --
     // Consolidated Class: Handles Attractions
     public class AttractionRepository
     {

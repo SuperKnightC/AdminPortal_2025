@@ -37,13 +37,23 @@ builder.Services.AddCors(options =>
             // The URL your React app runs on. Vite's default is 5173.
             policy.WithOrigins("http://localhost:5173")
                   .AllowAnyHeader()
-                  .AllowAnyMethod();
+                  .AllowAnyMethod()
+                  .AllowCredentials();
         });
 });
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme) // Use JWT Bearer authentication
     .AddJwtBearer(options =>
     {
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                context.Token = context.Request.Cookies["authToken"];
+                return Task.CompletedTask;
+            }
+        };
+
         options.TokenValidationParameters = new TokenValidationParameters
         {
             // --- Configure how the token will be validated ---

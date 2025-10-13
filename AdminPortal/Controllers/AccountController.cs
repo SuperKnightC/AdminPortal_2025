@@ -22,20 +22,40 @@ public class AccountController : ControllerBase
     #endregion
 
     #region -- Login Post Method --
-    [HttpPost("login")] // Route: POST /api/account/login
+    [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginModel model)
     {
         var user = await _userRepository.GetUserByEmailAsync(model.Email);
         if (user != null && BCrypt.Net.BCrypt.Verify(model.Password, user.PasswordHash))
         {
-            // In a real API, you would generate a JSON Web Token (JWT) here
-            // This token is sent to the front-end and used to authorize future requests
-            var token = _tokenService.GenerateToken(user); // Placeholder for token generation
-            return Ok(new { token = token });
+            var token = _tokenService.GenerateToken(user);
+
+            // Set the token in an HttpOnly cookie
+            Response.Cookies.Append("authToken", token, new CookieOptions
+            {
+                HttpOnly = true,    // The cookie cannot be accessed by client-side scripts
+                Secure = true,      // The cookie will only be sent over HTTPS
+                SameSite = SameSiteMode.None, // Required for cross-origin (different ports)
+                Expires = DateTime.UtcNow.AddHours(24) // Set an expiration
+            });
+
+            return Ok(new { message = "Login successful" });
         }
 
-        // Return a 401 Unauthorized status if login fails
         return Unauthorized(new { message = "Invalid email or password" });
+    }
+
+    [HttpPost("logout")]
+    public IActionResult Logout()
+    {
+        // Clear the cookie by setting an expired one
+        Response.Cookies.Delete("authToken", new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = true,
+            SameSite = SameSiteMode.None
+        });
+        return Ok(new { message = "Logged out successfully" });
     }
     #endregion
 }
