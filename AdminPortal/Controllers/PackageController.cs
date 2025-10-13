@@ -1,8 +1,10 @@
 ﻿using AdminPortal.Data;
 using AdminPortal.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Threading.Tasks;
 
+[Authorize]
 [ApiController]
 [Route("api/[controller]")] 
 public class PackageController : ControllerBase
@@ -46,18 +48,21 @@ public class PackageController : ControllerBase
     #endregion
 
     #region -- Insert Package Post Method --
-    [HttpPost] // Route: POST /api/package
+    [HttpPost]
     public async Task<IActionResult> InsertPackage([FromBody] PackageViewModel model)
     {
         if (!ModelState.IsValid)
         {
-            return BadRequest(ModelState); // Returns a 400 status with validation errors
+            // Return a 400 Bad Request with the validation errors as JSON
+            return BadRequest(ModelState);
         }
 
         try
         {
             // This core logic remains exactly the same!
             decimal totalPrice = 0;
+            int totalPoints = 0;
+
             foreach (var item in model.Items)
             {
                 item.Price = null;
@@ -70,9 +75,21 @@ public class PackageController : ControllerBase
                 else if (item.itemType == "Point" || item.itemType == "Reward")
                 {
                     item.Point = (int)item.Value;
+                    totalPoints += (int)item.Value;
                 }
             }
-            model.Price = totalPrice;
+
+            if (model.packageType == "Entry")
+            {
+                model.Price = totalPrice;
+                model.Point = 0;
+            }
+            else if (model.packageType == "Point" || model.packageType == "Reward")
+            {
+                model.Price = 0;
+                model.Point = totalPoints;
+            }
+
             int newPackageId = await _packageRepository.InsertPackage(model);
 
             foreach (var item in model.Items)
@@ -81,13 +98,12 @@ public class PackageController : ControllerBase
                 await _packageItemRepository.InsertPackageItem(item);
             }
 
-            // Return a success message and the ID of the newly created package
             return Ok(new { message = "Package created successfully", packageId = newPackageId });
         }
         catch (Exception ex)
         {
+            // In case of an error, return a 500 Internal Server Error status
             // Log the exception 'ex'
-            // Return a 500 Internal Server Error status
             return StatusCode(500, "An internal server error occurred.");
         }
     }

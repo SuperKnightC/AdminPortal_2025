@@ -1,5 +1,10 @@
-using Microsoft.AspNetCore.Mvc;
 using AdminPortal.Data;
+using AdminPortal.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -20,9 +25,9 @@ builder.Services.AddScoped<PackageItemRepository>();
 builder.Services.AddScoped<AgeCategoryRepository>();
 builder.Services.AddScoped<AttractionRepository>();
 builder.Services.AddScoped<PackageImageRepository>();
+builder.Services.AddScoped<TokenService>();
 
-// Add MVC services
-builder.Services.AddControllersWithViews();
+builder.Services.AddControllersWithViews();// Enable MVC with views support
 
 builder.Services.AddCors(options =>
 {
@@ -36,24 +41,45 @@ builder.Services.AddCors(options =>
         });
 });
 
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme) // Use JWT Bearer authentication
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            // --- Configure how the token will be validated ---
 
-var app = builder.Build();
+            // 1. Validate the signing key
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"])),
 
-if (!app.Environment.IsDevelopment())
+            // 2. Validate the issuer
+            ValidateIssuer = true,
+            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+
+            // 3. Validate the audience
+            ValidateAudience = true,
+            ValidAudience = builder.Configuration["Jwt:Audience"],
+
+            // 4. Validate the token lifetime
+            ClockSkew = TimeSpan.Zero
+        };
+    });
+
+var app = builder.Build(); // Build the app
+
+if (!app.Environment.IsDevelopment())  // Configure the HTTP request pipeline for production
 {
     app.UseExceptionHandler("/Home/Error");
     app.UseHsts();
 }
 
-app.UseHttpsRedirection();
-app.UseStaticFiles();
-
-app.UseRouting();
-app.UseCors("AllowReactApp");
-// Enable CSRF protection check globally for MVC controllers
-app.UseAntiforgery();
-
-app.UseAuthorization();
+app.UseHttpsRedirection(); // Redirect HTTP to HTTPS
+app.UseStaticFiles(); // Serve static files from wwwroot
+app.UseRouting(); // Build Route table before executing
+app.UseCors("AllowReactApp"); // Enable Frontend to access this API
+app.UseAntiforgery(); // Enable Anti-forgery token validation
+app.UseAuthentication(); //Look for JWT token in the request
+app.UseAuthorization(); // Check if the user is authorized to access the resource
 
 // MVC route mapping
 app.MapControllerRoute(

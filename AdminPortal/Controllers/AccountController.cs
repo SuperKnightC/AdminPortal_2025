@@ -1,5 +1,6 @@
 ﻿using AdminPortal.Data;
 using AdminPortal.Models; // Assuming your new models are here
+using AdminPortal.Services;
 using BCrypt.Net;
 using Microsoft.AspNetCore.Mvc;
 
@@ -9,12 +10,14 @@ public class AccountController : ControllerBase
 {
     #region-- Repository Declaration --
     private readonly UserRepository _userRepository;
+    private readonly TokenService _tokenService;
     #endregion
 
     #region -- Constructor Injection for UserRepository --
-    public AccountController(UserRepository userRepository)
+    public AccountController(UserRepository userRepository, TokenService tokenService)
     {
         _userRepository = userRepository;
+        _tokenService = tokenService;
     }
     #endregion
 
@@ -27,7 +30,7 @@ public class AccountController : ControllerBase
         {
             // In a real API, you would generate a JSON Web Token (JWT) here
             // This token is sent to the front-end and used to authorize future requests
-            var token = "your.generated.jwt.token"; // Placeholder for token generation
+            var token = _tokenService.GenerateToken(user); // Placeholder for token generation
             return Ok(new { token = token });
         }
 

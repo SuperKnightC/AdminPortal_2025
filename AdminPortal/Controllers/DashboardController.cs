@@ -1,9 +1,13 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using AdminPortal.Data;
+using AdminPortal.Models;
+using AdminPortal.Services;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using System.Linq;
 using System.Threading.Tasks;
-using AdminPortal.Data;
-using AdminPortal.Models;
 
+[Authorize]
+[NoCache]
 [ApiController]
 [Route("api/[controller]")]
 public class DashboardController : ControllerBase
