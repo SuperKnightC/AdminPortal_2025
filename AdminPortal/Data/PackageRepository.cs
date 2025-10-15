@@ -101,21 +101,28 @@ namespace AdminPortal.Data //set the namespace for reference
             var packages = new List<Package>();
             using (var conn = _databaseHelper.GetConnection())
             {
-                string sql = "SELECT * FROM Packages";
                 await conn.OpenAsync();
-                var cmd = new SqlCommand("SELECT * FROM Packages", conn);
 
+                // Start building the query
+                string sql = "SELECT * FROM Packages";
+                var cmd = new SqlCommand();
+
+                // If a status filter is provided, add a WHERE clause
                 if (!string.IsNullOrEmpty(statusFilter) && statusFilter != "Show All")
                 {
                     sql += " WHERE RecordStatus = @Status";
                     cmd.Parameters.AddWithValue("@Status", statusFilter);
                 }
+
+                // Now, set the command's text and connection
                 cmd.CommandText = sql;
                 cmd.Connection = conn;
+
                 using (var reader = await cmd.ExecuteReaderAsync())
                 {
                     while (await reader.ReadAsync())
                     {
+                        // Using the helper method is critical to prevent crashes from NULL data
                         packages.Add(MapPackageFromReader(reader));
                     }
                 }

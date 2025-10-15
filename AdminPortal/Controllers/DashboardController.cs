@@ -28,31 +28,34 @@ public class DashboardController : ControllerBase
     #endregion
 
     #region -- All Packages Get Method --
-    [HttpGet] // Route: GET /api/dashboard
+    [HttpGet]
     public async Task<IActionResult> GetPackages([FromQuery] string status)
     {
+        // Pass the status filter from the URL to your repository method
         var allPackages = await _packageRepo.GetAllAsync(status);
+
         var summaryList = new List<PackageSummaryViewModel>();
+        var baseUrl = $"{Request.Scheme}://{Request.Host}";
 
         foreach (var package in allPackages)
         {
             var items = await _packageItemRepo.GetItemsByPackageIdAsync(package.PackageID);
+            string imageUrl = $"{baseUrl}/images/gun.jpg";
 
-            // --- CORRECTED CODE FOR HANDLING THE ImageID STRING ---
-            string imageUrl = "https://localhost:7029/images/gun.jpg"; 
-
-            // Check if the ImageID string is not null/empty and can be converted to a number
             if (!string.IsNullOrEmpty(package.ImageID) && int.TryParse(package.ImageID, out int imageId))
             {
-                // If it's valid, fetch the real URL from the database
-                imageUrl = await _packageImageRepo.GetUrlByIdAsync(imageId) ?? imageUrl;
+                var specificUrl = await _packageImageRepo.GetUrlByIdAsync(imageId);
+                if (!string.IsNullOrEmpty(specificUrl))
+                {
+                    imageUrl = $"{baseUrl}{specificUrl}";
+                }
             }
 
             summaryList.Add(new PackageSummaryViewModel
             {
                 Id = package.PackageID,
                 Name = package.Name,
-                ImageUrl = imageUrl, // Use the imageUrl we determined above
+                ImageUrl = imageUrl,
                 PackageType = package.PackageType,
                 Quantity = items.Count,
                 Category = items.FirstOrDefault()?.AgeCategory ?? "N/A",
