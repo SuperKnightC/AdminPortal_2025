@@ -111,4 +111,7 @@ app.Use(async (context, next) =>
 app.UseAuthentication(); //Look for JWT token in the request
 app.UseAuthorization(); // Check if the user is authorized to access the resource
 app.MapControllers();
+app.MapControllerRoute(
+    name: "default",
+    pattern: "{controller=Dashboard}/{action=Index}/{id?}");
 app.Run();

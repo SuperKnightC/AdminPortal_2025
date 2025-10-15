@@ -29,9 +29,9 @@ public class DashboardController : ControllerBase
 
     #region -- All Packages Get Method --
     [HttpGet] // Route: GET /api/dashboard
-    public async Task<IActionResult> GetPackages()
+    public async Task<IActionResult> GetPackages([FromQuery] string status)
     {
-        var allPackages = await _packageRepo.GetAllAsync();
+        var allPackages = await _packageRepo.GetAllAsync(status);
         var summaryList = new List<PackageSummaryViewModel>();
 
         foreach (var package in allPackages)
@@ -55,7 +55,8 @@ public class DashboardController : ControllerBase
                 ImageUrl = imageUrl, // Use the imageUrl we determined above
                 PackageType = package.PackageType,
                 Quantity = items.Count,
-                Category = items.FirstOrDefault()?.AgeCategory ?? "N/A"
+                Category = items.FirstOrDefault()?.AgeCategory ?? "N/A",
+                Status = package.Status
             });
         }
 
@@ -140,5 +141,8 @@ public class DashboardController : ControllerBase
         }
     }
     #endregion
+
+
+
 
 }

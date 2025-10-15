@@ -87,32 +87,7 @@ namespace AdminPortal.Data //set the namespace for reference
                 {
                     if (await reader.ReadAsync())
                     {
-                        package = new Package
-                        {
-                            PackageID = (int)reader["PackageID"],
-                            Name = reader["Name"].ToString(),
-                            PackageType = reader["PackageType"].ToString(),
-                            Status = reader["RecordStatus"].ToString(),
-                            Link = reader["Link"].ToString(),
-                            PackageNo = reader["PackageNo"].ToString(),
-
-                            // Safely cast all DateTime types
-                            LastValidDate = reader["LastValidDate"] is DBNull ? DateTime.MinValue : (DateTime)reader["LastValidDate"],
-                            CreatedDate = reader["CreatedDate"] is DBNull ? DateTime.MinValue : (DateTime)reader["CreatedDate"],
-                            ModifiedDate = reader["ModifiedDate"] is DBNull ? DateTime.MinValue : (DateTime)reader["ModifiedDate"],
-
-                            // Safely cast all numeric and nullable types
-                            Price = reader["Price"] is DBNull ? 0 : (decimal)reader["Price"],
-                            Point = reader["Point"] is DBNull ? 0 : (int)reader["Point"],
-                            ValidDays = reader["ValidDays"] is DBNull ? 0 : (int)reader["ValidDays"],
-                            DaysPass = reader["DaysPass"] is DBNull ? 0 : (int)reader["DaysPass"],
-                            CreatedUserID = reader["CreatedUserID"] is DBNull ? 0 : (int)reader["CreatedUserID"],
-                            ModifiedUserID = reader["ModifiedUserID"] is DBNull ? 0 : (int)reader["ModifiedUserID"],
-                            GroupEntityID = reader["GroupEntityID"] is DBNull ? 0 : (int)reader["GroupEntityID"],
-                            TerminalGroupID = reader["TerminalGroupID"] is DBNull ? 0 : (int)reader["TerminalGroupID"],
-                            ProductID = reader["ProductID"] is DBNull ? 0 : (long)reader["ProductID"],
-                            ImageID = reader["ImageID"] is DBNull ? null : reader["ImageID"].ToString(),
-                        };
+                        package = MapPackageFromReader(reader);
                     }
                 }
             }
@@ -121,43 +96,27 @@ namespace AdminPortal.Data //set the namespace for reference
         #endregion
 
         #region-- Get All Packages For Dashboard --
-        public async Task<List<Package>> GetAllAsync()
+        public async Task<List<Package>> GetAllAsync(string statusFilter = null)
         {
             var packages = new List<Package>();
             using (var conn = _databaseHelper.GetConnection())
             {
+                string sql = "SELECT * FROM Packages";
                 await conn.OpenAsync();
                 var cmd = new SqlCommand("SELECT * FROM Packages", conn);
+
+                if (!string.IsNullOrEmpty(statusFilter) && statusFilter != "Show All")
+                {
+                    sql += " WHERE RecordStatus = @Status";
+                    cmd.Parameters.AddWithValue("@Status", statusFilter);
+                }
+                cmd.CommandText = sql;
+                cmd.Connection = conn;
                 using (var reader = await cmd.ExecuteReaderAsync())
                 {
                     while (await reader.ReadAsync())
                     {
-                        packages.Add(new Package
-                        {
-                            PackageID = (int)reader["PackageID"],
-                            Name = reader["Name"].ToString(),
-                            PackageType = reader["PackageType"].ToString(),
-                            Status = reader["RecordStatus"].ToString(),
-                            Link = reader["Link"].ToString(),
-                            PackageNo = reader["PackageNo"].ToString(),
-
-                            // Safely cast all DateTime types
-                            LastValidDate = reader["LastValidDate"] is DBNull ? DateTime.MinValue : (DateTime)reader["LastValidDate"],
-                            CreatedDate = reader["CreatedDate"] is DBNull ? DateTime.MinValue : (DateTime)reader["CreatedDate"],
-                            ModifiedDate = reader["ModifiedDate"] is DBNull ? DateTime.MinValue : (DateTime)reader["ModifiedDate"],
-
-                            // Safely cast all numeric and nullable types
-                            Price = reader["Price"] is DBNull ? 0 : (decimal)reader["Price"],
-                            Point = reader["Point"] is DBNull ? 0 : (int)reader["Point"],
-                            ValidDays = reader["ValidDays"] is DBNull ? 0 : (int)reader["ValidDays"],
-                            DaysPass = reader["DaysPass"] is DBNull ? 0 : (int)reader["DaysPass"],
-                            CreatedUserID = reader["CreatedUserID"] is DBNull ? 0 : (int)reader["CreatedUserID"],
-                            ModifiedUserID = reader["ModifiedUserID"] is DBNull ? 0 : (int)reader["ModifiedUserID"],
-                            GroupEntityID = reader["GroupEntityID"] is DBNull ? 0 : (int)reader["GroupEntityID"],
-                            TerminalGroupID = reader["TerminalGroupID"] is DBNull ? 0 : (int)reader["TerminalGroupID"],
-                            ProductID = reader["ProductID"] is DBNull ? 0 : (long)reader["ProductID"],
-                            ImageID = reader["ImageID"] is DBNull ? null : reader["ImageID"].ToString(),
-                        });
+                        packages.Add(MapPackageFromReader(reader));
                     }
                 }
             }
@@ -310,7 +269,35 @@ namespace AdminPortal.Data //set the namespace for reference
             }
         }
         #endregion
+        private Package MapPackageFromReader(SqlDataReader reader)
+        {
+            return new Package
+            {
+                PackageID = (int)reader["PackageID"],
+                Name = reader["Name"].ToString(),
+                PackageType = reader["PackageType"].ToString(),
+                Status = reader["RecordStatus"].ToString(),
+                Link = reader["Link"].ToString(),
+                PackageNo = reader["PackageNo"]?.ToString(),
 
+                // Safely handle all nullable DateTime types
+                LastValidDate = reader["LastValidDate"] is DBNull ? DateTime.MinValue : (DateTime)reader["LastValidDate"],
+                CreatedDate = reader["CreatedDate"] is DBNull ? DateTime.MinValue : (DateTime)reader["CreatedDate"],
+                ModifiedDate = reader["ModifiedDate"] is DBNull ? DateTime.MinValue : (DateTime)reader["ModifiedDate"],
+
+                // Safely handle all nullable numeric and string types
+                Price = reader["Price"] is DBNull ? 0 : (decimal)reader["Price"],
+                Point = reader["Point"] is DBNull ? 0 : (int)reader["Point"],
+                ValidDays = reader["ValidDays"] is DBNull ? 0 : (int)reader["ValidDays"],
+                DaysPass = reader["DaysPass"] is DBNull ? 0 : (int)reader["DaysPass"],
+                CreatedUserID = reader["CreatedUserID"] is DBNull ? 0 : (int)reader["CreatedUserID"],
+                ModifiedUserID = reader["ModifiedUserID"] is DBNull ? 0 : (int)reader["ModifiedUserID"],
+                GroupEntityID = reader["GroupEntityID"] is DBNull ? 0 : (int)reader["GroupEntityID"],
+                TerminalGroupID = reader["TerminalGroupID"] is DBNull ? 0 : (int)reader["TerminalGroupID"],
+                ProductID = reader["ProductID"] is DBNull ? 0 : (long)reader["ProductID"],
+                ImageID = reader["ImageID"] is DBNull ? null : reader["ImageID"].ToString()
+            };
+        }
     }
 
 }
