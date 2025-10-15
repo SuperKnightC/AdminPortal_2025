@@ -4,10 +4,12 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
-
+builder.Logging.AddConsole();
+builder.Logging.AddDebug();
 // 1. Retrieve the connection string from configuration
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
@@ -27,6 +29,7 @@ builder.Services.AddScoped<AttractionRepository>();
 builder.Services.AddScoped<PackageImageRepository>();
 builder.Services.AddScoped<TokenService>();
 
+
 builder.Services.AddControllersWithViews();// Enable MVC with views support
 
 builder.Services.AddCors(options =>
@@ -42,58 +45,70 @@ builder.Services.AddCors(options =>
         });
 });
 
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme) // Use JWT Bearer authentication
+// In Program.cs
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
+        options.RequireHttpsMetadata = false; // allow localhost & ngrok
+        options.SaveToken = true;
+
         options.Events = new JwtBearerEvents
         {
+            OnAuthenticationFailed = context =>
+            {
+                Console.WriteLine("Token validation failed:");
+                Console.WriteLine(context.Exception.ToString());
+                return Task.CompletedTask;
+            },
+            OnChallenge = context =>
+            {
+                Console.WriteLine("Authentication challenge triggered.");
+                Console.WriteLine($"Error: {context.Error ?? "(none)"}");
+                Console.WriteLine($"Description: {context.ErrorDescription ?? "(none)"}");
+                Console.WriteLine($"Failure: {context.AuthenticateFailure?.Message ?? "(no failure object)"}");
+                return Task.CompletedTask;
+            },
             OnMessageReceived = context =>
             {
-                context.Token = context.Request.Cookies["authToken"];
+                var authHeader = context.Request.Headers["Authorization"].FirstOrDefault();
+                Console.WriteLine($"Authorization header: {authHeader}");
+                if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer "))
+                    context.Token = authHeader.Substring("Bearer ".Length).Trim();
                 return Task.CompletedTask;
             }
         };
 
         options.TokenValidationParameters = new TokenValidationParameters
         {
-            // --- Configure how the token will be validated ---
-
-            // 1. Validate the signing key
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"])),
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.Zero,
 
-            // 2. Validate the issuer
-            ValidateIssuer = true,
-            ValidIssuer = builder.Configuration["Jwt:Issuer"],
-
-            // 3. Validate the audience
-            ValidateAudience = true,
-            ValidAudience = builder.Configuration["Jwt:Audience"],
-
-            // 4. Validate the token lifetime
-            ClockSkew = TimeSpan.Zero
+            // For development with ngrok, we are keeping these disabled for now
+            ValidateIssuer = false,
+            ValidateAudience = false,
         };
     });
-
 var app = builder.Build(); // Build the app
 
 if (!app.Environment.IsDevelopment())  // Configure the HTTP request pipeline for production
 {
+    app.UseDeveloperExceptionPage();
     app.UseExceptionHandler("/Home/Error");
     app.UseHsts();
 }
-
-app.UseHttpsRedirection(); // Redirect HTTP to HTTPS
 app.UseStaticFiles(); // Serve static files from wwwroot
 app.UseRouting(); // Build Route table before executing
 app.UseCors("AllowReactApp"); // Enable Frontend to access this API
 app.UseAntiforgery(); // Enable Anti-forgery token validation
+app.Use(async (context, next) =>
+{
+    var authHeader = context.Request.Headers["Authorization"].FirstOrDefault();
+    Console.WriteLine("Authorization Header: " + authHeader);
+    await next();
+});
 app.UseAuthentication(); //Look for JWT token in the request
 app.UseAuthorization(); // Check if the user is authorized to access the resource
-
-// MVC route mapping
-app.MapControllerRoute(
-    name: "default",
-    pattern: "{controller=Dashboard}/{action=Index}/{id?}");
-
+app.MapControllers();
 app.Run();

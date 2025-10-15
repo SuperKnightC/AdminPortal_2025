@@ -1,8 +1,10 @@
 ﻿using AdminPortal.Data;
-using AdminPortal.Models; // Assuming your new models are here
+using AdminPortal.Models; 
 using AdminPortal.Services;
 using BCrypt.Net;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 [ApiController]
 [Route("api/[controller]")] 
@@ -24,25 +26,24 @@ public class AccountController : ControllerBase
     #region -- Login Post Method --
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginModel model)
-    {
-        var user = await _userRepository.GetUserByEmailAsync(model.Email);
-        if (user != null && BCrypt.Net.BCrypt.Verify(model.Password, user.PasswordHash))
         {
-            var token = _tokenService.GenerateToken(user);
+        try
+        {
+            var user = await _userRepository.GetAuthUserByEmailAsync(model.Email);
 
-            // Set the token in an HttpOnly cookie
-            Response.Cookies.Append("authToken", token, new CookieOptions
+            if (user != null && BCrypt.Net.BCrypt.Verify(model.Password, user.PasswordHash))
             {
-                HttpOnly = true,    // The cookie cannot be accessed by client-side scripts
-                Secure = true,      // The cookie will only be sent over HTTPS
-                SameSite = SameSiteMode.None, // Required for cross-origin (different ports)
-                Expires = DateTime.UtcNow.AddHours(24) // Set an expiration
-            });
+                var token = _tokenService.GenerateToken(user);
+                return Ok(new { token });
+            }
 
-            return Ok(new { message = "Login successful" });
+            return Unauthorized(new { message = "Invalid email or password" });
         }
-
-        return Unauthorized(new { message = "Invalid email or password" });
+        catch (Exception ex)
+        {
+            Console.WriteLine("ERROR in Login: " + ex);
+            return StatusCode(500, new { message = ex.Message, stackTrace = ex.StackTrace });
+        }
     }
 
     [HttpPost("logout")]
@@ -58,4 +59,27 @@ public class AccountController : ControllerBase
         return Ok(new { message = "Logged out successfully" });
     }
     #endregion
+
+    #region -- Staff Department Get Method --
+    [Authorize] // This ensures only logged-in users can access this
+    [HttpGet("me")] // Route: GET /api/Account/me
+    public IActionResult GetMe()
+    {
+        Console.WriteLine(">>> GET /api/Account/me reached");
+        var userEmail = User.Claims.FirstOrDefault(c => // important
+            c.Type == "sub" ||
+            c.Type == ClaimTypes.NameIdentifier)?.Value;
+        var userName = User.Claims.FirstOrDefault(c => c.Type == "name")?.Value;
+        var department = User.Claims.FirstOrDefault(c => c.Type == "department")?.Value;
+
+        if (string.IsNullOrEmpty(userEmail))
+        {
+            return Unauthorized();
+        }
+
+        // Return the user's details as JSON
+        return Ok(new { email = userEmail, name = userName, department = department });
+    }
+    #endregion
+
 }

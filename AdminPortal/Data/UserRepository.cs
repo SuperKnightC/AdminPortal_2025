@@ -35,29 +35,45 @@ namespace AdminPortal.Data //declare namespace
         #endregion
 
         #region -- Get User By Email Method --
-        public async Task<User?> GetUserByEmailAsync(string email)
+        public async Task<AuthUser?> GetAuthUserByEmailAsync(string email)
         {
             using (var conn = _databaseHelper.GetConnection())
             {
                 await conn.OpenAsync();
 
-                var cmd = new SqlCommand("SELECT id, email, passwordHash FROM users WHERE email = @email", conn);
+                var cmd = new SqlCommand(@"
+            SELECT 
+                a.AccID, 
+                a.Email, 
+                a.Password, 
+                u.staff_name, 
+                u.department 
+            FROM 
+                dbo.App_Account a
+            JOIN 
+                dbo.useru u ON a.AccID = u.account_id
+            WHERE 
+                a.Email = @email 
+                AND a.RecordStatus = 'Active' 
+                AND a.IsStaff = 'Y'", conn);
 
                 cmd.Parameters.AddWithValue("@email", email);
                 using (var reader = await cmd.ExecuteReaderAsync())
                 {
                     if (await reader.ReadAsync())
                     {
-                        return new User
+                        return new AuthUser
                         {
-                            Id = reader.GetInt32(0),
-                            Email = reader.GetString(1),
-                            PasswordHash = reader.GetString(2)
+                            // Safely read all potentially null columns
+                            AccountId = (int)reader["AccID"],
+                            Email = reader["Email"] is DBNull ? string.Empty : reader["Email"].ToString(),
+                            PasswordHash = reader["Password"] is DBNull ? string.Empty : reader["Password"].ToString(),
+                            Name = reader["staff_name"] is DBNull ? string.Empty : reader["staff_name"].ToString(),
+                            Department = reader["department"] is DBNull ? string.Empty : reader["department"].ToString()
                         };
                     }
                 }
             }
-
             return null;
         }
         #endregion

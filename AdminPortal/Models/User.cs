@@ -3,11 +3,13 @@
     //This model responsible for user login variable
 
     #region -- User Login View Model --
-    public class User // For user data representation (DB)
+    public class AuthUser
     {
-        public int Id { get; set; }
-        public string Email { get; set; } = string.Empty;
-        public string PasswordHash { get; set; } = string.Empty;
+        public int AccountId { get; set; }
+        public string Email { get; set; }
+        public string PasswordHash { get; set; }
+        public string Name { get; set; }
+        public string Department { get; set; }
     }
     #endregion
 
