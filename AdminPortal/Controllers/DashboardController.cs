@@ -40,7 +40,7 @@ public class DashboardController : ControllerBase
         foreach (var package in allPackages)
         {
             var items = await _packageItemRepo.GetItemsByPackageIdAsync(package.PackageID);
-            string imageUrl = $"{baseUrl}/images/gun.jpg";
+            string imageUrl = $"{baseUrl}/images/wynsnow.jpg";
 
             if (!string.IsNullOrEmpty(package.ImageID) && int.TryParse(package.ImageID, out int imageId))
             {
@@ -57,9 +57,12 @@ public class DashboardController : ControllerBase
                 Name = package.Name,
                 ImageUrl = imageUrl,
                 PackageType = package.PackageType,
-                Quantity = items.Count,
                 Category = items.FirstOrDefault()?.AgeCategory ?? "N/A",
-                Status = package.Status
+                Status = package.Status,
+
+                Price = package.Price,
+                DateCreated = package.CreatedDate,
+                EntryQty = items.Sum(item => item.EntryQty) // Sum the quantity from all items
             });
         }
 
@@ -76,14 +79,18 @@ public class DashboardController : ControllerBase
         {
             return NotFound();
         }
-
+       
         var packageItems = await _packageItemRepo.GetItemsByPackageIdAsync(id);
-
+        var baseUrl = $"{Request.Scheme}://{Request.Host}";
         // CODE FOR HANDLING THE ImageID STRING ---
-        string imageUrl = "https://localhost:7029/images/gun.jpg"; // Start with a default fallback
+        string imageUrl = $"{baseUrl}/images/wynsnow.jpg"; // Start with a default fallback
         if (!string.IsNullOrEmpty(packageData.ImageID) && int.TryParse(packageData.ImageID, out int imageId))
         {
-            imageUrl = await _packageImageRepo.GetUrlByIdAsync(imageId) ?? imageUrl;
+            var specificUrlPath = await _packageImageRepo.GetUrlByIdAsync(imageId);
+            if (!string.IsNullOrEmpty(specificUrlPath))
+            {
+                imageUrl = $"{baseUrl}{specificUrlPath}";
+            }
         }
 
         var calculatedEffectiveDate = packageData.LastValidDate.AddDays(-packageData.ValidDays);
@@ -97,7 +104,7 @@ public class DashboardController : ControllerBase
             LastValidDate = packageData.LastValidDate,
             ValidDays = packageData.ValidDays,
             Status = packageData.Status,
-            ImageUrl = imageUrl, // Use the imageUrl we determined above
+            ImageUrl = imageUrl, 
             Items = packageItems.Select(item => new PackageItemDetail
             {
                 ItemName = item.ItemName,

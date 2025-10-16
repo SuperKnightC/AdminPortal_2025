@@ -12,10 +12,12 @@ namespace AdminPortal.Models
         public int Id { get; set; }
         public string Name { get; set; }
         public string PackageType { get; set; }
-        public int Quantity { get; set; }
+        public int EntryQty { get; set; }       // Changed from Quantity
         public string Category { get; set; }
         public string ImageUrl { get; set; }
         public string Status { get; set; }
+        public decimal Price { get; set; }      // New field
+        public DateTime DateCreated { get; set; } // New field
     }
     #endregion  
 

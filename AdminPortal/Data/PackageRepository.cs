@@ -103,18 +103,18 @@ namespace AdminPortal.Data //set the namespace for reference
             {
                 await conn.OpenAsync();
 
-                // Start building the query
+                // 1. Start building the query string and create the command object
                 string sql = "SELECT * FROM Packages";
                 var cmd = new SqlCommand();
 
-                // If a status filter is provided, add a WHERE clause
+                // 2. If a filter is provided, add the WHERE clause and the parameter
                 if (!string.IsNullOrEmpty(statusFilter) && statusFilter != "Show All")
                 {
                     sql += " WHERE RecordStatus = @Status";
                     cmd.Parameters.AddWithValue("@Status", statusFilter);
                 }
 
-                // Now, set the command's text and connection
+                // 3. Now, assign the final SQL and connection to the command
                 cmd.CommandText = sql;
                 cmd.Connection = conn;
 
@@ -276,6 +276,8 @@ namespace AdminPortal.Data //set the namespace for reference
             }
         }
         #endregion
+
+        #region -- Map Package From Reader Helper Method --
         private Package MapPackageFromReader(SqlDataReader reader)
         {
             return new Package
@@ -305,6 +307,7 @@ namespace AdminPortal.Data //set the namespace for reference
                 ImageID = reader["ImageID"] is DBNull ? null : reader["ImageID"].ToString()
             };
         }
+        #endregion
     }
 
 }
