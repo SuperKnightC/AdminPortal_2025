@@ -49,7 +49,7 @@ public class PackageController : ControllerBase
 
     #region -- Insert Package Post Method --
     [HttpPost]
-    public async Task<IActionResult> InsertPackage([FromBody] PackageViewModel model)
+    public async Task<IActionResult> InsertPackage([FromBody] PackageViewModel model) 
     {
         if (!ModelState.IsValid)
         {
@@ -108,5 +108,24 @@ public class PackageController : ControllerBase
         }
     }
     #endregion
+
+    [HttpPut("{id}/status")]
+    [Authorize(Policy = "FinanceOnly")] //  policy for FN users
+    public async Task<IActionResult> UpdatePackageStatus(int id, [FromBody] StatusUpdateModel model)
+    {
+        if (model == null || (model.Status != "Approved" && model.Status != "Rejected"))
+        {
+            return BadRequest("Invalid status provided.");
+        }
+
+        var success = await _packageRepository.UpdatePackageStatusAsync(id, model.Status);
+
+        if (!success)
+        {
+            return NotFound(new { message = "Package not found or status could not be updated." });
+        }
+
+        return Ok(new { message = $"Package status updated to {model.Status}" });
+    }
 
 }

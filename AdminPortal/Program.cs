@@ -7,6 +7,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Text;
+using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Logging.AddConsole();
@@ -32,6 +33,19 @@ builder.Services.AddScoped<TokenService>();
 
 
 builder.Services.AddControllersWithViews();// Enable MVC with views support
+
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        // This line is the fix
+        options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+    });
+
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("FinanceOnly", policy =>
+        policy.RequireClaim("department", "FN"));
+});
 
 builder.Services.AddCors(options =>
 {

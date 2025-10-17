@@ -31,8 +31,23 @@ public class DashboardController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetPackages([FromQuery] string status)
     {
+        // Get department from JWT claims
+        var department = User.Claims.FirstOrDefault(c => c.Type == "department")?.Value;
+
+        // Security Check: Only TP department can view Draft packages
+        if (status == "Draft" && department != "TP")
+        {
+            return Forbid(); // Returns 403 Forbidden
+        }
+
         // Pass the status filter from the URL to your repository method
         var allPackages = await _packageRepo.GetAllAsync(status);
+
+        // Additional security: Filter out Draft packages for non-TP users in "Show All"
+        if (status == "Show All" && department != "TP")
+        {
+            allPackages = allPackages.Where(p => p.Status != "Draft").ToList();
+        }
 
         var summaryList = new List<PackageSummaryViewModel>();
         var baseUrl = $"{Request.Scheme}://{Request.Host}";
@@ -79,7 +94,16 @@ public class DashboardController : ControllerBase
         {
             return NotFound();
         }
-       
+
+        // Get department from JWT claims
+        var department = User.Claims.FirstOrDefault(c => c.Type == "department")?.Value;
+
+        // Security Check: Only TP department can view Draft package details
+        if (packageData.Status == "Draft" && department != "TP")
+        {
+            return Forbid(); // Returns 403 Forbidden
+        }
+
         var packageItems = await _packageItemRepo.GetItemsByPackageIdAsync(id);
         var baseUrl = $"{Request.Scheme}://{Request.Host}";
         // CODE FOR HANDLING THE ImageID STRING ---

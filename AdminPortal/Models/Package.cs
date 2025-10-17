@@ -145,4 +145,9 @@ namespace AdminPortal.Models
 
     }
     #endregion
+
+    public class StatusUpdateModel
+    {
+        public string Status { get; set; }
+    }
 }

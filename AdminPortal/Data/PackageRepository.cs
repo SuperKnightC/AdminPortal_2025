@@ -74,25 +74,41 @@ namespace AdminPortal.Data //set the namespace for reference
         #endregion
 
         #region-- Get Package By ID For Details --
-        public async Task<Package> GetPackageByIdAsync(int id)
+        public async Task<Package?> GetPackageByIdAsync(int id)
         {
-            Package package = null;
-            using (var conn = _databaseHelper.GetConnection())
-            {
-                await conn.OpenAsync();
-                var cmd = new SqlCommand("SELECT * FROM Packages WHERE PackageID = @PackageID", conn);
-                cmd.Parameters.AddWithValue("@PackageID", id);
+            var package = await _context.Packages.FirstOrDefaultAsync(p => p.PackageID == id);
+            if (package == null)
+                return null;
 
-                using (var reader = await cmd.ExecuteReaderAsync())
+            // Fetch all items belonging to this package
+            var items = await _context.PackageItem
+                .Where(i => i.PackageID == id)
+                .ToListAsync();
+
+            if (items.Any())
+            {
+                // Check if package is point-based
+                bool isPointBased = (package.Point.HasValue && package.Point.Value > 0);
+
+                if (isPointBased)
                 {
-                    if (await reader.ReadAsync())
-                    {
-                        package = MapPackageFromReader(reader);
-                    }
+                    // Sum of all item points (ignore EntryQty)
+                    package.Point = items.Sum(i => i.ItemPoint ?? 0);
                 }
+                else
+                {
+                    // Sum of all item prices (ignore EntryQty)
+                    package.Price = items.Sum(i => i.ItemPrice ?? 0);
+                }
+
+                // Optionally update the database so totals stay correct
+                _context.Packages.Update(package);
+                await _context.SaveChangesAsync();
             }
+
             return package;
         }
+
         #endregion
 
         #region-- Get All Packages For Dashboard --
@@ -308,6 +324,23 @@ namespace AdminPortal.Data //set the namespace for reference
             };
         }
         #endregion
+
+
+        public async Task<bool> UpdatePackageStatusAsync(int packageId, string newStatus)
+        {
+            using (var connection = _databaseHelper.GetConnection())
+            {
+                await connection.OpenAsync();
+                var command = new SqlCommand(
+                    "UPDATE Packages SET Status = @Status WHERE PackageID = @PackageID",
+                    connection);
+                command.Parameters.AddWithValue("@Status", newStatus);
+                command.Parameters.AddWithValue("@PackageID", packageId);
+
+                var rowsAffected = await command.ExecuteNonQueryAsync();
+                return rowsAffected > 0;
+            }
+        }
     }
 
 }
