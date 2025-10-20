@@ -2,11 +2,12 @@
 using AdminPortal.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 using System.Threading.Tasks;
 
 [Authorize]
 [ApiController]
-[Route("api/[controller]")] 
+[Route("api/[controller]")]
 public class PackageController : ControllerBase
 {
     #region -- Repository Declarations --
@@ -14,18 +15,21 @@ public class PackageController : ControllerBase
     private readonly PackageItemRepository _packageItemRepository;
     private readonly AgeCategoryRepository _ageCategoryRepository;
     private readonly AttractionRepository _attractionRepository;
+    private readonly PackageImageRepository _packageImageRepository;
     #endregion
 
     #region -- Constructor Injection for Repositories --
     public PackageController(PackageRepository packageRepository,
            PackageItemRepository packageItemRepository,
            AgeCategoryRepository ageCategoryRepository,
-           AttractionRepository attractionRepository)
+           AttractionRepository attractionRepository,
+           PackageImageRepository packageImageRepository)
     {
         _packageRepository = packageRepository;
         _packageItemRepository = packageItemRepository;
         _ageCategoryRepository = ageCategoryRepository;
         _attractionRepository = attractionRepository;
+        _packageImageRepository = packageImageRepository;
     }
     #endregion
 
@@ -47,9 +51,40 @@ public class PackageController : ControllerBase
     }
     #endregion
 
+    #region -- Image Upload Post Method --
+    [HttpPost("upload")]
+    [Authorize(Policy = "CanCreatePackage")]
+    public async Task<IActionResult> UploadImage(IFormFile file)
+    {
+        if (file == null || file.Length == 0)
+            return BadRequest("No file uploaded.");
+
+        // In a real app, you'd save to Azure Blob, S3, etc.
+        // For now, we save to wwwroot/images/packages
+        var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "images", "packages");
+        if (!Directory.Exists(uploadsFolder))
+            Directory.CreateDirectory(uploadsFolder);
+
+        var uniqueFileName = Guid.NewGuid().ToString() + "_" + file.FileName;
+        var filePath = Path.Combine(uploadsFolder, uniqueFileName);
+
+        using (var stream = new FileStream(filePath, FileMode.Create))
+        {
+            await file.CopyToAsync(stream);
+        }
+
+        // The URL path to be saved in the database
+        var imageUrl = $"/images/packages/{uniqueFileName}";
+        var imageId = await _packageImageRepository.InsertAsync(imageUrl);
+
+        return Ok(new { imageId = imageId.ToString(), imageUrl = imageUrl });
+    }
+    #endregion
+
     #region -- Insert Package Post Method --
-    [HttpPost]
-    public async Task<IActionResult> InsertPackage([FromBody] PackageViewModel model) 
+    [HttpPost("create")]
+    [Authorize(Policy = "CanCreatePackage")]
+    public async Task<IActionResult> InsertPackage([FromBody] PackageViewModel model)
     {
         if (!ModelState.IsValid)
         {
@@ -59,6 +94,12 @@ public class PackageController : ControllerBase
 
         try
         {
+            // --- GET CURRENT USER ID ---
+            var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdString) || !int.TryParse(userIdString, out int userId))
+            {
+                return Unauthorized("User ID is not available in token.");
+            }
             // This core logic remains exactly the same!
             decimal totalPrice = 0;
             int totalPoints = 0;
@@ -70,12 +111,12 @@ public class PackageController : ControllerBase
                 if (item.itemType == "Entry")
                 {
                     item.Price = item.Value;
-                    totalPrice += item.Value;
+                    totalPrice += item.Value * item.EntryQty;
                 }
                 else if (item.itemType == "Point" || item.itemType == "Reward")
                 {
                     item.Point = (int)item.Value;
-                    totalPoints += (int)item.Value;
+                    totalPoints += (int)item.Value * item.EntryQty;
                 }
             }
 
@@ -90,12 +131,12 @@ public class PackageController : ControllerBase
                 model.Point = totalPoints;
             }
 
-            int newPackageId = await _packageRepository.InsertPackage(model);
+            int newPackageId = await _packageRepository.InsertPackage(model,userId);
 
             foreach (var item in model.Items)
             {
                 item.PackageID = newPackageId;
-                await _packageItemRepository.InsertPackageItem(item);
+                await _packageItemRepository.InsertPackageItem(item,userId);
             }
 
             return Ok(new { message = "Package created successfully", packageId = newPackageId });
@@ -109,6 +150,7 @@ public class PackageController : ControllerBase
     }
     #endregion
 
+    #region -- Finance Approve Reject Put Method --
     [HttpPut("{id}/status")]
     [Authorize(Policy = "FinanceOnly")] //  policy for FN users
     public async Task<IActionResult> UpdatePackageStatus(int id, [FromBody] StatusUpdateModel model)
@@ -118,7 +160,14 @@ public class PackageController : ControllerBase
             return BadRequest("Invalid status provided.");
         }
 
-        var success = await _packageRepository.UpdatePackageStatusAsync(id, model.Status);
+        // --- GET CURRENT USER ID ---
+        var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userIdString) || !int.TryParse(userIdString, out int userId))
+        {
+            return Unauthorized("User ID is not available in token.");
+        }
+
+        var success = await _packageRepository.UpdatePackageStatusAsync(id, model.Status,userId);
 
         if (!success)
         {
@@ -127,5 +176,6 @@ public class PackageController : ControllerBase
 
         return Ok(new { message = $"Package status updated to {model.Status}" });
     }
-
+    #endregion
 }
+

@@ -16,8 +16,9 @@ namespace AdminPortal.Models
         public string Category { get; set; }
         public string ImageUrl { get; set; }
         public string Status { get; set; }
-        public decimal Price { get; set; }      // New field
-        public DateTime DateCreated { get; set; } // New field
+        public decimal Price { get; set; }
+        public int Point { get; set; }
+        public DateTime DateCreated { get; set; } 
     }
     #endregion  
 
@@ -29,11 +30,17 @@ namespace AdminPortal.Models
         public int Id { get; set; }
         public string Name { get; set; }
         public string PackageType { get; set; }
+        public int TotalEntryQty { get; set; }
+        public decimal Price { get; set; }
+        public int Point { get; set; }
+        public string AgeCategory { get; set; }
         public DateTime EffectiveDate { get; set; }
         public DateTime LastValidDate { get; set; }
         public int ValidDays { get; set; }
         public string Status { get; set; }
         public string ImageUrl { get; set; }
+        public string Remark { get; set; }
+        public DateTime CreatedDate { get; set; }
         public List<PackageItemDetail> Items { get; set; } = new List<PackageItemDetail>();
     }
     #endregion
@@ -46,6 +53,7 @@ namespace AdminPortal.Models
         public string ItemName { get; set; }
         public decimal Price { get; set; }
         public int Point { get; set; }
+        public int EntryQty { get; set; }
         public string Category { get; set; }
     }
     #endregion

@@ -2,6 +2,7 @@
 using System.Data;
 namespace AdminPortal.Data //declare the namespace for this file
 {
+    #region -- DB connection
     public class DatabaseHelper
     {
         private readonly string _connectionString; //declare a read only file loaded from appsetting.json
@@ -14,6 +15,19 @@ namespace AdminPortal.Data //declare the namespace for this file
         public SqlConnection GetConnection()
         {
             return new SqlConnection(_connectionString); //repository that need access to db will call this method
+            }
+    }
+    #endregion
+    public static class SqlDataReaderExtensions 
+    {
+        public static bool HasColumn(this SqlDataReader dr, string columnName)
+        {
+            for (int i = 0; i < dr.FieldCount; i++)
+            {
+                if (dr.GetName(i).Equals(columnName, StringComparison.InvariantCultureIgnoreCase))
+                    return true;
+            }
+            return false;
         }
     }
 }

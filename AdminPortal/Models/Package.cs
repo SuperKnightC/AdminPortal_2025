@@ -39,16 +39,42 @@ namespace AdminPortal.Models
 
         public List<PackageItem> Items { get; set; } = new List<PackageItem>();
 
-        // This is your custom validation logic from before
+        // --- THIS IS THE FIX ---
+        // This custom validation logic now calculates the total price/points
+        // from the items list before checking for validity.
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
         {
-            if (packageType == "Entry" && Price <= 0)
+            // First, check if there are any items at all.
+            if (Items == null || !Items.Any())
             {
-                yield return new ValidationResult("Price is required for Entry type packages.", new[] { nameof(Price) });
+                yield return new ValidationResult("A package must contain at least one item.", new[] { nameof(Items) });
+                // Stop further validation if there are no items.
+                yield break;
             }
-            if ((packageType == "Point" || packageType == "Reward") && Point <= 0)
+
+            // Calculate the totals based on the items provided.
+            decimal calculatedPrice = 0;
+            int calculatedPoints = 0;
+            foreach (var item in Items)
             {
-                yield return new ValidationResult("Point value is required for Point or Reward type packages.", new[] { nameof(Point) });
+                if (item.itemType == "Entry")
+                {
+                    calculatedPrice += item.Value * item.EntryQty;
+                }
+                else if (item.itemType == "Point" || item.itemType == "Reward")
+                {
+                    calculatedPoints += (int)item.Value * item.EntryQty;
+                }
+            }
+
+            // Now, validate against the calculated totals.
+            if (packageType == "Entry" && calculatedPrice <= 0)
+            {
+                yield return new ValidationResult("Price is required for Entry type packages. The total price of items must be greater than 0.", new[] { nameof(Price) });
+            }
+            if ((packageType == "Point" || packageType == "Reward") && calculatedPoints <= 0)
+            {
+                yield return new ValidationResult("Point value is required for Point or Reward type packages. The total points of items must be greater than 0.", new[] { nameof(Point) });
             }
         }
     }
@@ -143,11 +169,19 @@ namespace AdminPortal.Models
         public string? ImageID { get; set; }
         public string? Remark { get; set; }
 
+        [NotMapped] // This attribute tells EF Core not to create a column for this
+        public string? CreatedByName { get; set; }
+
+        [NotMapped]
+        public string? ModifiedByName { get; set; }
+
     }
     #endregion
 
+    #region -- Status Model --
     public class StatusUpdateModel
     {
         public string Status { get; set; }
     }
+    #endregion
 }

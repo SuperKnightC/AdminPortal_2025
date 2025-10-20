@@ -17,7 +17,7 @@ namespace AdminPortal.Data //set the namespace for reference
         #endregion
 
         #region -- Package Insert --
-        public async Task<int> InsertPackage(PackageViewModel package)
+        public async Task<int> InsertPackage(PackageViewModel package, int createdUserId)
         {
             using (var conn = _databaseHelper.GetConnection())
             {
@@ -50,7 +50,7 @@ namespace AdminPortal.Data //set the namespace for reference
                 cmd.Parameters.AddWithValue("@Price", package.Price);
                 cmd.Parameters.AddWithValue("@Point", package.Point);
                 cmd.Parameters.AddWithValue("@LastValidDate", package.LastValidDate);
-                cmd.Parameters.AddWithValue("@Remark", (object)package.remark ?? DBNull.Value); 
+                cmd.Parameters.AddWithValue("@Remark", (object)package.remark ?? DBNull.Value);
 
                 // == Calculated Value ==
                 cmd.Parameters.AddWithValue("@ValidDays", validDays);
@@ -64,8 +64,8 @@ namespace AdminPortal.Data //set the namespace for reference
                 cmd.Parameters.AddWithValue("@DaysPass", 7); // Fixed value for now
                 cmd.Parameters.AddWithValue("@Link", "#"); // Fixed value
                 cmd.Parameters.AddWithValue("@RecordStatus", "Pending"); // Default status
-                cmd.Parameters.AddWithValue("@CreatedUserID", 1); // Fixed user ID
-                cmd.Parameters.AddWithValue("@ModifiedUserID", 1); // Fixed user ID
+                cmd.Parameters.AddWithValue("@CreatedUserID", createdUserId);
+                cmd.Parameters.AddWithValue("@ModifiedUserID", createdUserId);  // Fixed user ID
 
                 object result = await cmd.ExecuteScalarAsync();
                 return Convert.ToInt32(result);
@@ -76,36 +76,21 @@ namespace AdminPortal.Data //set the namespace for reference
         #region-- Get Package By ID For Details --
         public async Task<Package?> GetPackageByIdAsync(int id)
         {
-            var package = await _context.Packages.FirstOrDefaultAsync(p => p.PackageID == id);
-            if (package == null)
-                return null;
-
-            // Fetch all items belonging to this package
-            var items = await _context.PackageItem
-                .Where(i => i.PackageID == id)
-                .ToListAsync();
-
-            if (items.Any())
+            Package package = null;
+            using (var conn = _databaseHelper.GetConnection())
             {
-                // Check if package is point-based
-                bool isPointBased = (package.Point.HasValue && package.Point.Value > 0);
+                await conn.OpenAsync();
+                var cmd = new SqlCommand("SELECT * FROM Packages WHERE PackageID = @PackageID", conn);
+                cmd.Parameters.AddWithValue("@PackageID", id);
 
-                if (isPointBased)
+                using (var reader = await cmd.ExecuteReaderAsync())
                 {
-                    // Sum of all item points (ignore EntryQty)
-                    package.Point = items.Sum(i => i.ItemPoint ?? 0);
+                    if (await reader.ReadAsync())
+                    {
+                        package = MapPackageFromReader(reader);
+                    }
                 }
-                else
-                {
-                    // Sum of all item prices (ignore EntryQty)
-                    package.Price = items.Sum(i => i.ItemPrice ?? 0);
-                }
-
-                // Optionally update the database so totals stay correct
-                _context.Packages.Update(package);
-                await _context.SaveChangesAsync();
             }
-
             return package;
         }
 
@@ -120,7 +105,14 @@ namespace AdminPortal.Data //set the namespace for reference
                 await conn.OpenAsync();
 
                 // 1. Start building the query string and create the command object
-                string sql = "SELECT * FROM Packages";
+                string sql = @"
+                SELECT
+                    p.*,
+                    u_created.staff_name AS CreatedByName,
+                    u_modified.staff_name AS ModifiedByName
+                FROM Packages p
+                LEFT JOIN useru u_created ON p.CreatedUserID = u_created.UserID
+                LEFT JOIN useru u_modified ON p.ModifiedUserID = u_modified.UserID";
                 var cmd = new SqlCommand();
 
                 // 2. If a filter is provided, add the WHERE clause and the parameter
@@ -296,7 +288,7 @@ namespace AdminPortal.Data //set the namespace for reference
         #region -- Map Package From Reader Helper Method --
         private Package MapPackageFromReader(SqlDataReader reader)
         {
-            return new Package
+            var package = new Package
             {
                 PackageID = (int)reader["PackageID"],
                 Name = reader["Name"].ToString(),
@@ -321,26 +313,43 @@ namespace AdminPortal.Data //set the namespace for reference
                 TerminalGroupID = reader["TerminalGroupID"] is DBNull ? 0 : (int)reader["TerminalGroupID"],
                 ProductID = reader["ProductID"] is DBNull ? 0 : (long)reader["ProductID"],
                 ImageID = reader["ImageID"] is DBNull ? null : reader["ImageID"].ToString()
+
+
             };
+
+            // --- MAP THE NEW JOINED NAMES ---
+            // Check if the joined columns exist before trying to read them
+            if (reader.HasColumn("CreatedByName"))
+            {
+                package.CreatedByName = reader["CreatedByName"] is DBNull ? "N/A" : reader["CreatedByName"].ToString();
+            }
+            if (reader.HasColumn("ModifiedByName"))
+            {
+                package.ModifiedByName = reader["ModifiedByName"] is DBNull ? "N/A" : reader["ModifiedByName"].ToString();
+            }
+
+            return package;
         }
         #endregion
 
-
-        public async Task<bool> UpdatePackageStatusAsync(int packageId, string newStatus)
+        #region -- Update package status with UserID --
+        public async Task<bool> UpdatePackageStatusAsync(int packageId, string newStatus, int modifiedUserId)
         {
             using (var connection = _databaseHelper.GetConnection())
             {
                 await connection.OpenAsync();
                 var command = new SqlCommand(
-                    "UPDATE Packages SET Status = @Status WHERE PackageID = @PackageID",
+                    "UPDATE Packages SET RecordStatus = @Status, ModifiedUserID = @ModifiedUserID, ModifiedDate = GETDATE() WHERE PackageID = @PackageID",
                     connection);
                 command.Parameters.AddWithValue("@Status", newStatus);
+                command.Parameters.AddWithValue("@ModifiedUserID", modifiedUserId); // Use the passed-in user ID
                 command.Parameters.AddWithValue("@PackageID", packageId);
 
                 var rowsAffected = await command.ExecuteNonQueryAsync();
                 return rowsAffected > 0;
             }
         }
+        #endregion
     }
 
 }

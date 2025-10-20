@@ -66,6 +66,19 @@ public class DashboardController : ControllerBase
                 }
             }
 
+            decimal totalPrice = 0;
+            int totalPoints = 0;
+
+            if (package.PackageType.Equals("Entry", StringComparison.OrdinalIgnoreCase))
+            {
+                totalPrice = items.Sum(item => item.Price ?? 0);
+            }
+            else if (package.PackageType.Equals("Point", StringComparison.OrdinalIgnoreCase) || package.PackageType.Equals("Reward", StringComparison.OrdinalIgnoreCase))
+            {
+                totalPoints = items.Sum(item => item.Point ?? 0);
+            }
+
+
             summaryList.Add(new PackageSummaryViewModel
             {
                 Id = package.PackageID,
@@ -74,8 +87,8 @@ public class DashboardController : ControllerBase
                 PackageType = package.PackageType,
                 Category = items.FirstOrDefault()?.AgeCategory ?? "N/A",
                 Status = package.Status,
-
-                Price = package.Price,
+                Price = totalPrice,
+                Point = totalPoints,
                 DateCreated = package.CreatedDate,
                 EntryQty = items.Sum(item => item.EntryQty) // Sum the quantity from all items
             });
@@ -119,22 +132,41 @@ public class DashboardController : ControllerBase
 
         var calculatedEffectiveDate = packageData.LastValidDate.AddDays(-packageData.ValidDays);
 
+        decimal totalPrice = 0;
+        int totalPoints = 0;
+
+        if (packageData.PackageType.Equals("Entry", StringComparison.OrdinalIgnoreCase))
+        {
+            totalPrice = packageItems.Sum(item => item.Price ?? 0);
+        }
+        else
+        {
+            totalPoints = packageItems.Sum(item => item.Point ?? 0);
+        }
+
         var detailModel = new PackageDetailViewModel
         {
             Id = packageData.PackageID,
             Name = packageData.Name,
             PackageType = packageData.PackageType,
+            TotalEntryQty = packageItems.Sum(item => item.EntryQty),
+            AgeCategory = packageItems.FirstOrDefault()?.AgeCategory ?? "N/A",
+            Price = totalPrice,
+            Point = totalPoints,
             EffectiveDate = calculatedEffectiveDate,
             LastValidDate = packageData.LastValidDate,
             ValidDays = packageData.ValidDays,
             Status = packageData.Status,
-            ImageUrl = imageUrl, 
+            ImageUrl = imageUrl,
+            Remark = packageData.Remark,
+            CreatedDate = packageData.CreatedDate,
             Items = packageItems.Select(item => new PackageItemDetail
             {
                 ItemName = item.ItemName,
                 Price = item.Price ?? 0,
                 Point = item.Point ?? 0,
-                Category = item.AgeCategory
+                Category = item.AgeCategory,
+                EntryQty = item.EntryQty
             }).ToList()
         };
 
@@ -175,8 +207,5 @@ public class DashboardController : ControllerBase
         }
     }
     #endregion
-
-
-
 
 }

@@ -18,23 +18,21 @@ namespace AdminPortal.Data
             _databaseHelper = databaseHelper;
         }
 
-        public async Task InsertPackageItem(PackageItem item)
+        public async Task InsertPackageItem(PackageItem item, int createdUserId)
         {
             using (var conn = _databaseHelper.GetConnection())
             {
                 await conn.OpenAsync();
 
                 var cmd = new SqlCommand(
-                    @"INSERT INTO PackageItem(PackageID, ItemName, ItemType, ItemPrice, ItemPoint, AgeCategory, EntryQty) 
-                      VALUES (@PackageID, @ItemName, @itemType, @Price, @Point, @AgeCategory, @EntryQty)", conn);
+                    @"INSERT INTO PackageItem (PackageID, ItemName, itemType, ItemPrice, ItemPoint, AgeCategory, EntryQty, CreatedUserID)
+              VALUES (@PackageID, @ItemName, @itemType, @ItemPrice, @ItemPoint, @AgeCategory, @EntryQty, @CreatedUserID)", conn);
 
                 cmd.Parameters.AddWithValue("@PackageID", item.PackageID);
-                cmd.Parameters.AddWithValue("@ItemName", item.ItemName);
-                cmd.Parameters.AddWithValue("@ItemType", item.itemType);
-                cmd.Parameters.AddWithValue("@AgeCategory", item.AgeCategory);
+                // ... (other item parameters)
                 cmd.Parameters.AddWithValue("@EntryQty", item.EntryQty);
-                cmd.Parameters.AddWithValue("@ItemPrice", (object)item.Price ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@ItemPoint", (object)item.Point ?? DBNull.Value);
+                // --- USE THE USER ID FROM THE CONTROLLER ---
+                cmd.Parameters.AddWithValue("@CreatedUserID", createdUserId);
 
                 await cmd.ExecuteNonQueryAsync();
             }
@@ -57,7 +55,8 @@ namespace AdminPortal.Data
                             ItemName = reader["ItemName"].ToString(),
                             Price = reader["ItemPrice"] as decimal?,
                             Point = reader["ItemPoint"] as int?,
-                            AgeCategory = reader["AgeCategory"].ToString()
+                            AgeCategory = reader["AgeCategory"].ToString(),
+                            EntryQty = (int)reader["EntryQty"]
                         });
                     }
                 }

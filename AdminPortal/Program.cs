@@ -45,6 +45,8 @@ builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("FinanceOnly", policy =>
         policy.RequireClaim("department", "FN"));
+    options.AddPolicy("CanCreatePackage", policy =>
+        policy.RequireClaim("department", "MIS", "TP"));
 });
 
 builder.Services.AddCors(options =>
