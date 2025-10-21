@@ -1,13 +1,14 @@
 using AdminPortal.Data;
 using AdminPortal.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
-using System.Text;
 using System.Security.Claims;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Logging.AddConsole();
@@ -43,6 +44,9 @@ builder.Services.AddControllers()
 
 builder.Services.AddAuthorization(options =>
 {
+    options.DefaultPolicy = new AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser()
+        .Build();
     options.AddPolicy("FinanceOnly", policy =>
         policy.RequireClaim("department", "FN"));
     options.AddPolicy("CanCreatePackage", policy =>
@@ -51,6 +55,7 @@ builder.Services.AddAuthorization(options =>
 
 builder.Services.AddCors(options =>
 {
+
     options.AddPolicy("AllowReactApp",
         policy =>
         {
