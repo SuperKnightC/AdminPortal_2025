@@ -119,6 +119,7 @@ public class DashboardController : ControllerBase
 
         var packageItems = await _packageItemRepo.GetItemsByPackageIdAsync(id);
         var baseUrl = $"{Request.Scheme}://{Request.Host}";
+
         // CODE FOR HANDLING THE ImageID STRING ---
         string imageUrl = $"{baseUrl}/images/wynsnow.jpg"; // Start with a default fallback
         if (!string.IsNullOrEmpty(packageData.ImageID) && int.TryParse(packageData.ImageID, out int imageId))
@@ -160,6 +161,11 @@ public class DashboardController : ControllerBase
             ImageUrl = imageUrl,
             Remark = packageData.Remark,
             CreatedDate = packageData.CreatedDate,
+
+            // NEW: Add the submitted by and approved by fields
+            SubmittedBy = packageData.CreatedByFirstName ?? "N/A",
+            ApprovedBy = packageData.ModifiedByFirstName ?? "N/A",
+
             Items = packageItems.Select(item => new PackageItemDetail
             {
                 ItemName = item.ItemName,
@@ -175,34 +181,46 @@ public class DashboardController : ControllerBase
     #endregion
 
     #region -- Approve Package Post Method --
-    [HttpPost("approve/{id}")] // Handles POST requests to /api/Dashboard/approve/{id}
+    [HttpPost("approve/{id}")]
     public async Task<IActionResult> Approve(int id)
     {
         try
         {
-            await _packageRepo.ApprovePackageAsync(id);
+            // Get current user ID
+            var userIdString = User.FindFirst("userId")?.Value;
+            if (string.IsNullOrEmpty(userIdString) || !int.TryParse(userIdString, out int userId))
+            {
+                return Unauthorized("User ID is not available in token.");
+            }
+
+            await _packageRepo.ApprovePackageAsync(id, userId);
             return Ok(new { message = "Package approved and transferred successfully." });
         }
         catch (Exception ex)
         {
-            // Log the exception ex
             return StatusCode(500, $"An error occurred while approving the package: {ex.Message}");
         }
     }
     #endregion
 
     #region -- Reject Package Post Method --
-    [HttpPost("reject/{id}")] // Handles POST requests to /api/Dashboard/reject/{id}
+    [HttpPost("reject/{id}")]
     public async Task<IActionResult> Reject(int id)
     {
         try
         {
-            await _packageRepo.RejectPackageAsync(id);
+            // Get current user ID
+            var userIdString = User.FindFirst("userId")?.Value;
+            if (string.IsNullOrEmpty(userIdString) || !int.TryParse(userIdString, out int userId))
+            {
+                return Unauthorized("User ID is not available in token.");
+            }
+
+            await _packageRepo.RejectPackageAsync(id, userId);
             return Ok(new { message = "Package rejected successfully." });
         }
         catch (Exception ex)
         {
-            // Log the exception ex
             return StatusCode(500, $"An error occurred while rejecting the package: {ex.Message}");
         }
     }

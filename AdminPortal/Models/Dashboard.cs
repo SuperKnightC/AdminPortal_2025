@@ -20,7 +20,7 @@ namespace AdminPortal.Models
         public int Point { get; set; }
         public DateTime DateCreated { get; set; } 
     }
-    #endregion  
+    #endregion
 
 
     #region-- Package Detail View Model --
@@ -41,6 +41,11 @@ namespace AdminPortal.Models
         public string ImageUrl { get; set; }
         public string Remark { get; set; }
         public DateTime CreatedDate { get; set; }
+
+        // NEW: Add these properties
+        public string SubmittedBy { get; set; }  // CreatedByFirstName
+        public string ApprovedBy { get; set; }   // ModifiedByFirstName
+
         public List<PackageItemDetail> Items { get; set; } = new List<PackageItemDetail>();
     }
     #endregion

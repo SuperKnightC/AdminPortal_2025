@@ -28,10 +28,14 @@ namespace AdminPortal.Data
                     @"INSERT INTO PackageItem (PackageID, ItemName, itemType, ItemPrice, ItemPoint, AgeCategory, EntryQty, CreatedUserID)
               VALUES (@PackageID, @ItemName, @itemType, @ItemPrice, @ItemPoint, @AgeCategory, @EntryQty, @CreatedUserID)", conn);
 
+                // FIXED: Add ALL parameters
                 cmd.Parameters.AddWithValue("@PackageID", item.PackageID);
-                // ... (other item parameters)
+                cmd.Parameters.AddWithValue("@ItemName", item.ItemName ?? (object)DBNull.Value);
+                cmd.Parameters.AddWithValue("@itemType", item.itemType ?? (object)DBNull.Value);
+                cmd.Parameters.AddWithValue("@ItemPrice", item.Price.HasValue ? (object)item.Price.Value : DBNull.Value);
+                cmd.Parameters.AddWithValue("@ItemPoint", item.Point.HasValue ? (object)item.Point.Value : DBNull.Value);
+                cmd.Parameters.AddWithValue("@AgeCategory", item.AgeCategory ?? (object)DBNull.Value);
                 cmd.Parameters.AddWithValue("@EntryQty", item.EntryQty);
-                // --- USE THE USER ID FROM THE CONTROLLER ---
                 cmd.Parameters.AddWithValue("@CreatedUserID", createdUserId);
 
                 await cmd.ExecuteNonQueryAsync();

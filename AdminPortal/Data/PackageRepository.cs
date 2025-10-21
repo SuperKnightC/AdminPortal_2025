@@ -1,16 +1,14 @@
-﻿using System.Data; //database tools
-using Microsoft.Data.SqlClient; // like a bridge to sql server
-using AdminPortal.Models; //call the model
+﻿using System.Data;
+using Microsoft.Data.SqlClient;
+using AdminPortal.Models;
 
-namespace AdminPortal.Data //set the namespace for reference
+namespace AdminPortal.Data
 {
     public class PackageRepository
     {
-        // This repo handles all database operations related to Package
-
         #region-- Database Helper --
-        private readonly DatabaseHelper _databaseHelper; //assign an object of dbhelper, readonly mean can be assign once only
-        public PackageRepository(DatabaseHelper databaseHelper) //constructor to receive the dbhelper object via DI
+        private readonly DatabaseHelper _databaseHelper;
+        public PackageRepository(DatabaseHelper databaseHelper)
         {
             _databaseHelper = databaseHelper;
         }
@@ -29,43 +27,38 @@ namespace AdminPortal.Data //set the namespace for reference
                     validDays = (int)(package.LastValidDate - package.effectiveDate).TotalDays + 1;
                 }
 
-                // Updated SQL command with all new columns
                 var cmd = new SqlCommand(
                     @"INSERT INTO Packages(
                 PackageNo, Name, PackageType, Price, Point, ValidDays, DaysPass,
                 LastValidDate, Link, RecordStatus, CreatedDate, CreatedUserID,
                 ModifiedDate, ModifiedUserID, GroupEntityID, TerminalGroupID,
-                ProductID, ImageID, Remark
+                ProductID, ImageID, Remark, Nationality
                 ) VALUES (
                     @PackageNo, @Name, @PackageType, @Price, @Point, @ValidDays, @DaysPass,
                     @LastValidDate, @Link, @RecordStatus, GETDATE(), @CreatedUserID,
                     GETDATE(), @ModifiedUserID, @GroupEntityID, @TerminalGroupID,
-                    @ProductID, @ImageID, @Remark
+                    @ProductID, @ImageID, @Remark, @Nationality
                 );
                 SELECT SCOPE_IDENTITY();", conn);
 
-                // == Parameters from the ViewModel ==
                 cmd.Parameters.AddWithValue("@Name", package.Name);
                 cmd.Parameters.AddWithValue("@PackageType", package.packageType);
                 cmd.Parameters.AddWithValue("@Price", package.Price);
                 cmd.Parameters.AddWithValue("@Point", package.Point);
                 cmd.Parameters.AddWithValue("@LastValidDate", package.LastValidDate);
                 cmd.Parameters.AddWithValue("@Remark", (object)package.remark ?? DBNull.Value);
-
-                // == Calculated Value ==
+                cmd.Parameters.AddWithValue("@Nationality", (object)package.Nationality ?? DBNull.Value);
                 cmd.Parameters.AddWithValue("@ValidDays", validDays);
-
-                // == Hardcoded Values as Requested ==
-                cmd.Parameters.AddWithValue("@PackageNo", DBNull.Value); // Set to NULL
-                cmd.Parameters.AddWithValue("@GroupEntityID", 1); // Fixed value
-                cmd.Parameters.AddWithValue("@TerminalGroupID", 1); // Fixed value
-                cmd.Parameters.AddWithValue("@ProductID", 1); // Fixed value
+                cmd.Parameters.AddWithValue("@PackageNo", DBNull.Value);
+                cmd.Parameters.AddWithValue("@GroupEntityID", 1);
+                cmd.Parameters.AddWithValue("@TerminalGroupID", 1);
+                cmd.Parameters.AddWithValue("@ProductID", 1);
                 cmd.Parameters.AddWithValue("@ImageID", (object)package.ImageID ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@DaysPass", 7); // Fixed value for now
-                cmd.Parameters.AddWithValue("@Link", "#"); // Fixed value
-                cmd.Parameters.AddWithValue("@RecordStatus", "Pending"); // Default status
+                cmd.Parameters.AddWithValue("@DaysPass", 7);
+                cmd.Parameters.AddWithValue("@Link", "#");
+                cmd.Parameters.AddWithValue("@RecordStatus", "Pending");
                 cmd.Parameters.AddWithValue("@CreatedUserID", createdUserId);
-                cmd.Parameters.AddWithValue("@ModifiedUserID", createdUserId);  // Fixed user ID
+                cmd.Parameters.AddWithValue("@ModifiedUserID", createdUserId);
 
                 object result = await cmd.ExecuteScalarAsync();
                 return Convert.ToInt32(result);
@@ -80,7 +73,21 @@ namespace AdminPortal.Data //set the namespace for reference
             using (var conn = _databaseHelper.GetConnection())
             {
                 await conn.OpenAsync();
-                var cmd = new SqlCommand("SELECT * FROM Packages WHERE PackageID = @PackageID", conn);
+
+                var cmd = new SqlCommand(@"
+                    SELECT
+                        p.*,
+                        u_created.staff_name AS CreatedByName,
+                        u_modified.staff_name AS ModifiedByName,
+                        acc_created.FirstName AS CreatedByFirstName,
+                        acc_modified.FirstName AS ModifiedByFirstName
+                    FROM Packages p
+                    LEFT JOIN useru u_created ON p.CreatedUserID = u_created.account_id
+                    LEFT JOIN useru u_modified ON p.ModifiedUserID = u_modified.account_id
+                    LEFT JOIN App_Account acc_created ON p.CreatedUserID = acc_created.AccID
+                    LEFT JOIN App_Account acc_modified ON p.ModifiedUserID = acc_modified.AccID
+                    WHERE p.PackageID = @PackageID", conn);
+
                 cmd.Parameters.AddWithValue("@PackageID", id);
 
                 using (var reader = await cmd.ExecuteReaderAsync())
@@ -93,7 +100,6 @@ namespace AdminPortal.Data //set the namespace for reference
             }
             return package;
         }
-
         #endregion
 
         #region-- Get All Packages For Dashboard --
@@ -104,25 +110,27 @@ namespace AdminPortal.Data //set the namespace for reference
             {
                 await conn.OpenAsync();
 
-                // 1. Start building the query string and create the command object
                 string sql = @"
                 SELECT
                     p.*,
                     u_created.staff_name AS CreatedByName,
-                    u_modified.staff_name AS ModifiedByName
+                    u_modified.staff_name AS ModifiedByName,
+                    acc_created.FirstName AS CreatedByFirstName,
+                    acc_modified.FirstName AS ModifiedByFirstName
                 FROM Packages p
-                LEFT JOIN useru u_created ON p.CreatedUserID = u_created.UserID
-                LEFT JOIN useru u_modified ON p.ModifiedUserID = u_modified.UserID";
+                LEFT JOIN useru u_created ON p.CreatedUserID = u_created.account_id
+                LEFT JOIN useru u_modified ON p.ModifiedUserID = u_modified.account_id
+                LEFT JOIN App_Account acc_created ON p.CreatedUserID = acc_created.AccID
+                LEFT JOIN App_Account acc_modified ON p.ModifiedUserID = acc_modified.AccID";
+
                 var cmd = new SqlCommand();
 
-                // 2. If a filter is provided, add the WHERE clause and the parameter
                 if (!string.IsNullOrEmpty(statusFilter) && statusFilter != "Show All")
                 {
-                    sql += " WHERE RecordStatus = @Status";
+                    sql += " WHERE p.RecordStatus = @Status";
                     cmd.Parameters.AddWithValue("@Status", statusFilter);
                 }
 
-                // 3. Now, assign the final SQL and connection to the command
                 cmd.CommandText = sql;
                 cmd.Connection = conn;
 
@@ -130,7 +138,6 @@ namespace AdminPortal.Data //set the namespace for reference
                 {
                     while (await reader.ReadAsync())
                     {
-                        // Using the helper method is critical to prevent crashes from NULL data
                         packages.Add(MapPackageFromReader(reader));
                     }
                 }
@@ -140,20 +147,26 @@ namespace AdminPortal.Data //set the namespace for reference
         #endregion
 
         #region-- Reject Package --
-        public async Task RejectPackageAsync(int packageId)
+        public async Task RejectPackageAsync(int packageId, int rejectedByUserId)
         {
             using (var conn = _databaseHelper.GetConnection())
             {
                 await conn.OpenAsync();
-                var cmd = new SqlCommand("UPDATE Packages SET RecordStatus = 'Rejected' WHERE PackageID = @PackageID", conn);
+                var cmd = new SqlCommand(
+                    @"UPDATE Packages 
+                      SET RecordStatus = 'Rejected', 
+                          ModifiedUserID = @ModifiedUserID, 
+                          ModifiedDate = GETDATE() 
+                      WHERE PackageID = @PackageID", conn);
                 cmd.Parameters.AddWithValue("@PackageID", packageId);
+                cmd.Parameters.AddWithValue("@ModifiedUserID", rejectedByUserId);
                 await cmd.ExecuteNonQueryAsync();
             }
         }
         #endregion
 
         #region-- Approve Package --
-        public async Task ApprovePackageAsync(int packageId)
+        public async Task ApprovePackageAsync(int packageId, int approvedByUserId)
         {
             using (var conn = _databaseHelper.GetConnection())
             {
@@ -162,7 +175,18 @@ namespace AdminPortal.Data //set the namespace for reference
                 {
                     try
                     {
-                        // 1. Read the main package data
+                        // 1. Update the package status and ModifiedUserID in Packages table
+                        var updatePackageCmd = new SqlCommand(
+                            @"UPDATE Packages 
+                              SET RecordStatus = 'Approved', 
+                                  ModifiedUserID = @ModifiedUserID, 
+                                  ModifiedDate = GETDATE() 
+                              WHERE PackageID = @PackageID", conn, transaction);
+                        updatePackageCmd.Parameters.AddWithValue("@PackageID", packageId);
+                        updatePackageCmd.Parameters.AddWithValue("@ModifiedUserID", approvedByUserId);
+                        await updatePackageCmd.ExecuteNonQueryAsync();
+
+                        // 2. Read the package data
                         var selectPackageCmd = new SqlCommand("SELECT * FROM Packages WHERE PackageID = @PackageID", conn, transaction);
                         selectPackageCmd.Parameters.AddWithValue("@PackageID", packageId);
 
@@ -171,7 +195,6 @@ namespace AdminPortal.Data //set the namespace for reference
                         {
                             if (await reader.ReadAsync())
                             {
-                                // == MAPPING 1: Complete package mapping ==
                                 packageToCopy = new Package
                                 {
                                     PackageID = (int)reader["PackageID"],
@@ -184,7 +207,7 @@ namespace AdminPortal.Data //set the namespace for reference
                                     DaysPass = (int)reader["DaysPass"],
                                     LastValidDate = (DateTime)reader["LastValidDate"],
                                     Link = reader["Link"]?.ToString(),
-                                    Status = "Approved", // Set status to Approved for the new table
+                                    Status = "Approved",
                                     CreatedDate = (DateTime)reader["CreatedDate"],
                                     CreatedUserID = (int)reader["CreatedUserID"],
                                     ModifiedDate = (DateTime)reader["ModifiedDate"],
@@ -193,18 +216,18 @@ namespace AdminPortal.Data //set the namespace for reference
                                     TerminalGroupID = (int)reader["TerminalGroupID"],
                                     ProductID = (long)reader["ProductID"],
                                     ImageID = reader["ImageID"]?.ToString(),
-                                    Remark = reader["Remark"]?.ToString()
+                                    Remark = reader["Remark"]?.ToString(),
+                                    Nationality = reader["Nationality"]?.ToString()
                                 };
                             }
                         }
                         if (packageToCopy == null) throw new Exception("Package not found.");
 
-                        // 2. Insert the package data into the new App_PackageAO table
+                        // 3. Insert into App_PackageAO
                         var insertPackageCmd = new SqlCommand(
-                            @"INSERT INTO App_PackageAO (PackageNo, Name, PackageType, Price, Point, ValidDays, DaysPass, LastValidDate, Link, RecordStatus, CreatedDate, CreatedUserID, ModifiedDate, ModifiedUserID, GroupEntityID, TerminalGroupID, ProductID, ImageID, Remark) 
-                      VALUES (@PackageNo, @Name, @PackageType, @Price, @Point, @ValidDays, @DaysPass, @LastValidDate, @Link, @RecordStatus, @CreatedDate, @CreatedUserID, @ModifiedDate, @ModifiedUserID, @GroupEntityID, @TerminalGroupID, @ProductID, @ImageID, @Remark)", conn, transaction);
+                            @"INSERT INTO App_PackageAO (PackageNo, Name, PackageType, Price, Point, ValidDays, DaysPass, LastValidDate, Link, RecordStatus, CreatedDate, CreatedUserID, ModifiedDate, ModifiedUserID, GroupEntityID, TerminalGroupID, ProductID, ImageID, Remark, Nationality) 
+                              VALUES (@PackageNo, @Name, @PackageType, @Price, @Point, @ValidDays, @DaysPass, @LastValidDate, @Link, @RecordStatus, @CreatedDate, @CreatedUserID, @ModifiedDate, @ModifiedUserID, @GroupEntityID, @TerminalGroupID, @ProductID, @ImageID, @Remark, @Nationality)", conn, transaction);
 
-                        // == MAPPING 2: Add all parameters for the package insert ==
                         insertPackageCmd.Parameters.AddWithValue("@PackageNo", (object)packageToCopy.PackageNo ?? DBNull.Value);
                         insertPackageCmd.Parameters.AddWithValue("@Name", packageToCopy.Name);
                         insertPackageCmd.Parameters.AddWithValue("@PackageType", packageToCopy.PackageType);
@@ -217,16 +240,17 @@ namespace AdminPortal.Data //set the namespace for reference
                         insertPackageCmd.Parameters.AddWithValue("@RecordStatus", packageToCopy.Status);
                         insertPackageCmd.Parameters.AddWithValue("@CreatedDate", packageToCopy.CreatedDate);
                         insertPackageCmd.Parameters.AddWithValue("@CreatedUserID", packageToCopy.CreatedUserID);
-                        insertPackageCmd.Parameters.AddWithValue("@ModifiedDate", DateTime.Now); // Set new modified date
+                        insertPackageCmd.Parameters.AddWithValue("@ModifiedDate", packageToCopy.ModifiedDate);
                         insertPackageCmd.Parameters.AddWithValue("@ModifiedUserID", packageToCopy.ModifiedUserID);
                         insertPackageCmd.Parameters.AddWithValue("@GroupEntityID", packageToCopy.GroupEntityID);
                         insertPackageCmd.Parameters.AddWithValue("@TerminalGroupID", packageToCopy.TerminalGroupID);
                         insertPackageCmd.Parameters.AddWithValue("@ProductID", packageToCopy.ProductID);
                         insertPackageCmd.Parameters.AddWithValue("@ImageID", (object)packageToCopy.ImageID ?? DBNull.Value);
                         insertPackageCmd.Parameters.AddWithValue("@Remark", (object)packageToCopy.Remark ?? DBNull.Value);
+                        insertPackageCmd.Parameters.AddWithValue("@Nationality", (object)packageToCopy.Nationality ?? DBNull.Value);
                         await insertPackageCmd.ExecuteNonQueryAsync();
 
-                        // 3. Read all associated package items
+                        // 4. Read package items
                         var selectItemsCmd = new SqlCommand("SELECT * FROM PackageItem WHERE PackageID = @PackageID", conn, transaction);
                         selectItemsCmd.Parameters.AddWithValue("@PackageID", packageId);
 
@@ -235,7 +259,6 @@ namespace AdminPortal.Data //set the namespace for reference
                         {
                             while (await reader.ReadAsync())
                             {
-                                // == MAPPING 3: Complete item mapping ==
                                 itemsToCopy.Add(new PackageItem
                                 {
                                     PackageID = (int)reader["PackageID"],
@@ -249,14 +272,13 @@ namespace AdminPortal.Data //set the namespace for reference
                             }
                         }
 
-                        // 4. Insert each item into the new App_PackageItemAO table
+                        // 5. Insert items into App_PackageItemAO
                         foreach (var item in itemsToCopy)
                         {
                             var insertItemCmd = new SqlCommand(
                                 @"INSERT INTO App_PackageItemAO (PackageID, PackageQty, ItemName, ItemType, ItemPrice, ItemPoint, AgeCategory, EntryQty) 
-                          VALUES (@PackageID,@PackageQty, @ItemName, @itemType, @ItemPrice, @ItemPoint, @AgeCategory, @EntryQty)", conn, transaction);
+                                  VALUES (@PackageID, @PackageQty, @ItemName, @itemType, @ItemPrice, @ItemPoint, @AgeCategory, @EntryQty)", conn, transaction);
 
-                            // == MAPPING 4: Add all parameters for the item insert ==
                             insertItemCmd.Parameters.AddWithValue("@PackageID", item.PackageID);
                             insertItemCmd.Parameters.AddWithValue("@ItemName", item.ItemName);
                             insertItemCmd.Parameters.AddWithValue("@itemType", item.itemType);
@@ -267,11 +289,6 @@ namespace AdminPortal.Data //set the namespace for reference
                             insertItemCmd.Parameters.AddWithValue("@EntryQty", item.EntryQty);
                             await insertItemCmd.ExecuteNonQueryAsync();
                         }
-
-                        // 5. Update the original package's status to "Approved"
-                        var updateStatusCmd = new SqlCommand("UPDATE Packages SET RecordStatus = 'Approved' WHERE PackageID = @PackageID", conn, transaction);
-                        updateStatusCmd.Parameters.AddWithValue("@PackageID", packageId);
-                        await updateStatusCmd.ExecuteNonQueryAsync();
 
                         transaction.Commit();
                     }
@@ -296,13 +313,9 @@ namespace AdminPortal.Data //set the namespace for reference
                 Status = reader["RecordStatus"].ToString(),
                 Link = reader["Link"].ToString(),
                 PackageNo = reader["PackageNo"]?.ToString(),
-
-                // Safely handle all nullable DateTime types
                 LastValidDate = reader["LastValidDate"] is DBNull ? DateTime.MinValue : (DateTime)reader["LastValidDate"],
                 CreatedDate = reader["CreatedDate"] is DBNull ? DateTime.MinValue : (DateTime)reader["CreatedDate"],
                 ModifiedDate = reader["ModifiedDate"] is DBNull ? DateTime.MinValue : (DateTime)reader["ModifiedDate"],
-
-                // Safely handle all nullable numeric and string types
                 Price = reader["Price"] is DBNull ? 0 : (decimal)reader["Price"],
                 Point = reader["Point"] is DBNull ? 0 : (int)reader["Point"],
                 ValidDays = reader["ValidDays"] is DBNull ? 0 : (int)reader["ValidDays"],
@@ -312,13 +325,11 @@ namespace AdminPortal.Data //set the namespace for reference
                 GroupEntityID = reader["GroupEntityID"] is DBNull ? 0 : (int)reader["GroupEntityID"],
                 TerminalGroupID = reader["TerminalGroupID"] is DBNull ? 0 : (int)reader["TerminalGroupID"],
                 ProductID = reader["ProductID"] is DBNull ? 0 : (long)reader["ProductID"],
-                ImageID = reader["ImageID"] is DBNull ? null : reader["ImageID"].ToString()
-
-
+                ImageID = reader["ImageID"] is DBNull ? null : reader["ImageID"].ToString(),
+                Remark = reader["Remark"] is DBNull ? null : reader["Remark"].ToString(),
+                Nationality = reader["Nationality"] is DBNull ? null : reader["Nationality"].ToString()
             };
 
-            // --- MAP THE NEW JOINED NAMES ---
-            // Check if the joined columns exist before trying to read them
             if (reader.HasColumn("CreatedByName"))
             {
                 package.CreatedByName = reader["CreatedByName"] is DBNull ? "N/A" : reader["CreatedByName"].ToString();
@@ -326,6 +337,14 @@ namespace AdminPortal.Data //set the namespace for reference
             if (reader.HasColumn("ModifiedByName"))
             {
                 package.ModifiedByName = reader["ModifiedByName"] is DBNull ? "N/A" : reader["ModifiedByName"].ToString();
+            }
+            if (reader.HasColumn("CreatedByFirstName"))
+            {
+                package.CreatedByFirstName = reader["CreatedByFirstName"] is DBNull ? "N/A" : reader["CreatedByFirstName"].ToString();
+            }
+            if (reader.HasColumn("ModifiedByFirstName"))
+            {
+                package.ModifiedByFirstName = reader["ModifiedByFirstName"] is DBNull ? "N/A" : reader["ModifiedByFirstName"].ToString();
             }
 
             return package;
@@ -342,7 +361,7 @@ namespace AdminPortal.Data //set the namespace for reference
                     "UPDATE Packages SET RecordStatus = @Status, ModifiedUserID = @ModifiedUserID, ModifiedDate = GETDATE() WHERE PackageID = @PackageID",
                     connection);
                 command.Parameters.AddWithValue("@Status", newStatus);
-                command.Parameters.AddWithValue("@ModifiedUserID", modifiedUserId); // Use the passed-in user ID
+                command.Parameters.AddWithValue("@ModifiedUserID", modifiedUserId);
                 command.Parameters.AddWithValue("@PackageID", packageId);
 
                 var rowsAffected = await command.ExecuteNonQueryAsync();
@@ -351,5 +370,4 @@ namespace AdminPortal.Data //set the namespace for reference
         }
         #endregion
     }
-
 }

@@ -88,19 +88,18 @@ public class PackageController : ControllerBase
     {
         if (!ModelState.IsValid)
         {
-            // Return a 400 Bad Request with the validation errors as JSON
             return BadRequest(ModelState);
         }
 
         try
         {
-            // --- GET CURRENT USER ID ---
-            var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            // --- GET CURRENT USER ID FROM CORRECT CLAIM ---
+            var userIdString = User.FindFirst("userId")?.Value;
             if (string.IsNullOrEmpty(userIdString) || !int.TryParse(userIdString, out int userId))
             {
                 return Unauthorized("User ID is not available in token.");
             }
-            // This core logic remains exactly the same!
+
             decimal totalPrice = 0;
             int totalPoints = 0;
 
@@ -108,15 +107,18 @@ public class PackageController : ControllerBase
             {
                 item.Price = null;
                 item.Point = null;
+
                 if (item.itemType == "Entry")
                 {
                     item.Price = item.Value;
-                    totalPrice += item.Value * item.EntryQty;
+                    // OPTION A: Just sum the base prices (NO multiplication)
+                    totalPrice += item.Value;
                 }
                 else if (item.itemType == "Point" || item.itemType == "Reward")
                 {
                     item.Point = (int)item.Value;
-                    totalPoints += (int)item.Value * item.EntryQty;
+                    // OPTION A: Just sum the base points (NO multiplication)
+                    totalPoints += (int)item.Value;
                 }
             }
 
@@ -131,21 +133,20 @@ public class PackageController : ControllerBase
                 model.Point = totalPoints;
             }
 
-            int newPackageId = await _packageRepository.InsertPackage(model,userId);
+            int newPackageId = await _packageRepository.InsertPackage(model, userId);
 
             foreach (var item in model.Items)
             {
                 item.PackageID = newPackageId;
-                await _packageItemRepository.InsertPackageItem(item,userId);
+                await _packageItemRepository.InsertPackageItem(item, userId);
             }
 
             return Ok(new { message = "Package created successfully", packageId = newPackageId });
         }
         catch (Exception ex)
         {
-            // In case of an error, return a 500 Internal Server Error status
-            // Log the exception 'ex'
-            return StatusCode(500, "An internal server error occurred.");
+            // Log the exception
+            return StatusCode(500, $"An internal server error occurred: {ex.Message}");
         }
     }
     #endregion
@@ -160,14 +161,14 @@ public class PackageController : ControllerBase
             return BadRequest("Invalid status provided.");
         }
 
-        // --- GET CURRENT USER ID ---
-        var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        // --- FIXED: GET CURRENT USER ID FROM CORRECT CLAIM ---
+        var userIdString = User.FindFirst("userId")?.Value;
         if (string.IsNullOrEmpty(userIdString) || !int.TryParse(userIdString, out int userId))
         {
             return Unauthorized("User ID is not available in token.");
         }
 
-        var success = await _packageRepository.UpdatePackageStatusAsync(id, model.Status,userId);
+        var success = await _packageRepository.UpdatePackageStatusAsync(id, model.Status, userId);
 
         if (!success)
         {
@@ -178,4 +179,3 @@ public class PackageController : ControllerBase
     }
     #endregion
 }
-
