@@ -25,8 +25,8 @@ namespace AdminPortal.Data
                 await conn.OpenAsync();
 
                 var cmd = new SqlCommand(
-                    @"INSERT INTO PackageItem (PackageID, ItemName, itemType, ItemPrice, ItemPoint, AgeCategory, EntryQty, CreatedUserID)
-              VALUES (@PackageID, @ItemName, @itemType, @ItemPrice, @ItemPoint, @AgeCategory, @EntryQty, @CreatedUserID)", conn);
+                    @"INSERT INTO PackageItem (PackageID, ItemName, itemType, ItemPrice, ItemPoint, AgeCategory, EntryQty, CreatedUserID, Nationality)
+              VALUES (@PackageID, @ItemName, @itemType, @ItemPrice, @ItemPoint, @AgeCategory, @EntryQty, @CreatedUserID, @Nationality)", conn);
 
                 // FIXED: Add ALL parameters
                 cmd.Parameters.AddWithValue("@PackageID", item.PackageID);
@@ -37,7 +37,7 @@ namespace AdminPortal.Data
                 cmd.Parameters.AddWithValue("@AgeCategory", item.AgeCategory ?? (object)DBNull.Value);
                 cmd.Parameters.AddWithValue("@EntryQty", item.EntryQty);
                 cmd.Parameters.AddWithValue("@CreatedUserID", createdUserId);
-
+                cmd.Parameters.AddWithValue("@Nationality", (object)item.Nationality ?? DBNull.Value);
                 await cmd.ExecuteNonQueryAsync();
             }
         }
@@ -60,7 +60,8 @@ namespace AdminPortal.Data
                             Price = reader["ItemPrice"] as decimal?,
                             Point = reader["ItemPoint"] as int?,
                             AgeCategory = reader["AgeCategory"].ToString(),
-                            EntryQty = (int)reader["EntryQty"]
+                            EntryQty = (int)reader["EntryQty"],
+                            Nationality = reader.HasColumn("Nationality") && reader["Nationality"] is not DBNull ? reader["Nationality"].ToString() : null
                         });
                     }
                 }
@@ -68,6 +69,39 @@ namespace AdminPortal.Data
             return items;
 
         }
+        public async Task<List<PackageItem>> GetApprovedItemsByPackageIdAsync(int packageId)
+        {
+            var items = new List<PackageItem>();
+            using (var conn = _databaseHelper.GetConnection())
+            {
+                await conn.OpenAsync();
+                // Query the AO table
+                var cmd = new SqlCommand("SELECT * FROM App_PackageItemAO WHERE PackageID = @PackageID", conn);
+                cmd.Parameters.AddWithValue("@PackageID", packageId);
+
+                using (var reader = await cmd.ExecuteReaderAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        items.Add(new PackageItem
+                        {
+                            ItemName = reader["ItemName"].ToString(),
+                            Price = reader["ItemPrice"] as decimal?,
+                            Point = reader["ItemPoint"] as int?,
+                            AgeCategory = reader["AgeCategory"].ToString(),
+                            // Use EntryQty (or PackageQty if that's the correct column name in App_PackageItemAO)
+                            EntryQty = (int)reader["EntryQty"],
+                            Nationality = reader.HasColumn("Nationality") && reader["Nationality"] is not DBNull ? reader["Nationality"].ToString() : null
+                        });
+                    }
+                }
+            }
+            return items;
+
+        }
+
+
+
     }
     #endregion
 
@@ -180,12 +214,8 @@ namespace AdminPortal.Data
             }
         }
 
-
-
-
+       
     }
     #endregion
-    
-    
 
 }

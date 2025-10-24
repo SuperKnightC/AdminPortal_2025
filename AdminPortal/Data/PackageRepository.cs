@@ -32,12 +32,12 @@ namespace AdminPortal.Data
                 PackageNo, Name, PackageType, Price, Point, ValidDays, DaysPass,
                 LastValidDate, Link, RecordStatus, CreatedDate, CreatedUserID,
                 ModifiedDate, ModifiedUserID, GroupEntityID, TerminalGroupID,
-                ProductID, ImageID, Remark, Nationality
+                ProductID, ImageID, Remark 
                 ) VALUES (
                     @PackageNo, @Name, @PackageType, @Price, @Point, @ValidDays, @DaysPass,
                     @LastValidDate, @Link, @RecordStatus, GETDATE(), @CreatedUserID,
                     GETDATE(), @ModifiedUserID, @GroupEntityID, @TerminalGroupID,
-                    @ProductID, @ImageID, @Remark, @Nationality
+                    @ProductID, @ImageID, @Remark
                 );
                 SELECT SCOPE_IDENTITY();", conn);
 
@@ -47,7 +47,7 @@ namespace AdminPortal.Data
                 cmd.Parameters.AddWithValue("@Point", package.Point);
                 cmd.Parameters.AddWithValue("@LastValidDate", package.LastValidDate);
                 cmd.Parameters.AddWithValue("@Remark", (object)package.remark ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@Nationality", (object)package.Nationality ?? DBNull.Value);
+                
                 cmd.Parameters.AddWithValue("@ValidDays", validDays);
                 cmd.Parameters.AddWithValue("@PackageNo", DBNull.Value);
                 cmd.Parameters.AddWithValue("@GroupEntityID", 1);
@@ -103,6 +103,39 @@ namespace AdminPortal.Data
         #endregion
 
         #region-- Get All Packages For Dashboard --
+        private const string PackageQueryFragment = @"
+            SELECT
+                p.PackageID, 
+                p.PackageNo COLLATE DATABASE_DEFAULT AS PackageNo, 
+                p.Name COLLATE DATABASE_DEFAULT AS Name, 
+                p.PackageType COLLATE DATABASE_DEFAULT AS PackageType, 
+                p.Price, 
+                p.Point, 
+                p.ValidDays, 
+                p.DaysPass, 
+                p.LastValidDate, 
+                p.Link COLLATE DATABASE_DEFAULT AS Link, 
+                p.RecordStatus COLLATE DATABASE_DEFAULT AS RecordStatus, 
+                p.CreatedDate, 
+                p.CreatedUserID, 
+                p.ModifiedDate, 
+                p.ModifiedUserID, 
+                p.GroupEntityID, 
+                p.TerminalGroupID, 
+                p.ProductID, 
+                p.ImageID COLLATE DATABASE_DEFAULT AS ImageID, 
+                p.Remark COLLATE DATABASE_DEFAULT AS Remark,
+                u_created.staff_name COLLATE DATABASE_DEFAULT AS CreatedByName,
+                u_modified.staff_name COLLATE DATABASE_DEFAULT AS ModifiedByName,
+                acc_created.FirstName COLLATE DATABASE_DEFAULT AS CreatedByFirstName,
+                acc_modified.FirstName COLLATE DATABASE_DEFAULT AS ModifiedByFirstName
+            FROM {0} p
+            LEFT JOIN useru u_created ON p.CreatedUserID = u_created.account_id
+            LEFT JOIN useru u_modified ON p.ModifiedUserID = u_modified.account_id
+            LEFT JOIN App_Account acc_created ON p.CreatedUserID = acc_created.AccID
+            LEFT JOIN App_Account acc_modified ON p.ModifiedUserID = acc_modified.AccID
+        ";
+
         public async Task<List<Package>> GetAllAsync(string statusFilter = null)
         {
             var packages = new List<Package>();
@@ -110,24 +143,25 @@ namespace AdminPortal.Data
             {
                 await conn.OpenAsync();
 
-                string sql = @"
-                SELECT
-                    p.*,
-                    u_created.staff_name AS CreatedByName,
-                    u_modified.staff_name AS ModifiedByName,
-                    acc_created.FirstName AS CreatedByFirstName,
-                    acc_modified.FirstName AS ModifiedByFirstName
-                FROM Packages p
-                LEFT JOIN useru u_created ON p.CreatedUserID = u_created.account_id
-                LEFT JOIN useru u_modified ON p.ModifiedUserID = u_modified.account_id
-                LEFT JOIN App_Account acc_created ON p.CreatedUserID = acc_created.AccID
-                LEFT JOIN App_Account acc_modified ON p.ModifiedUserID = acc_modified.AccID";
-
+                string sql = "";
                 var cmd = new SqlCommand();
 
-                if (!string.IsNullOrEmpty(statusFilter) && statusFilter != "Show All")
+                if (statusFilter == "Active")
                 {
-                    sql += " WHERE p.RecordStatus = @Status";
+                    // 1. ACTIVE filter: Only show Approved packages from the LIVE (AO) table
+                    sql = string.Format(PackageQueryFragment, "App_PackageAO") + " WHERE p.RecordStatus = 'Approved'";
+                }
+                else if (statusFilter == "Show All")
+                {
+                    // 2. SHOW ALL filter: Show Approved from LIVE (AO) + all NON-Approved from STAGING (Packages)
+                    string queryAO = string.Format(PackageQueryFragment, "App_PackageAO") + " WHERE p.RecordStatus = 'Approved'";
+                    string queryPackages = string.Format(PackageQueryFragment, "Packages") + " WHERE p.RecordStatus != 'Approved'";
+                    sql = $"{queryAO} UNION ALL {queryPackages}";
+                }
+                else
+                {
+                    // 3. OTHER filters (Pending, Draft, etc.): Only show from STAGING (Packages)
+                    sql = string.Format(PackageQueryFragment, "Packages") + " WHERE p.RecordStatus = @Status";
                     cmd.Parameters.AddWithValue("@Status", statusFilter);
                 }
 
@@ -217,7 +251,7 @@ namespace AdminPortal.Data
                                     ProductID = (long)reader["ProductID"],
                                     ImageID = reader["ImageID"]?.ToString(),
                                     Remark = reader["Remark"]?.ToString(),
-                                    Nationality = reader["Nationality"]?.ToString()
+                                    
                                 };
                             }
                         }
@@ -225,8 +259,8 @@ namespace AdminPortal.Data
 
                         // 3. Insert into App_PackageAO
                         var insertPackageCmd = new SqlCommand(
-                            @"INSERT INTO App_PackageAO (PackageNo, Name, PackageType, Price, Point, ValidDays, DaysPass, LastValidDate, Link, RecordStatus, CreatedDate, CreatedUserID, ModifiedDate, ModifiedUserID, GroupEntityID, TerminalGroupID, ProductID, ImageID, Remark, Nationality) 
-                              VALUES (@PackageNo, @Name, @PackageType, @Price, @Point, @ValidDays, @DaysPass, @LastValidDate, @Link, @RecordStatus, @CreatedDate, @CreatedUserID, @ModifiedDate, @ModifiedUserID, @GroupEntityID, @TerminalGroupID, @ProductID, @ImageID, @Remark, @Nationality)", conn, transaction);
+                            @"INSERT INTO App_PackageAO (PackageNo, Name, PackageType, Price, Point, ValidDays, DaysPass, LastValidDate, Link, RecordStatus, CreatedDate, CreatedUserID, ModifiedDate, ModifiedUserID, GroupEntityID, TerminalGroupID, ProductID, ImageID, Remark ) 
+                              VALUES (@PackageNo, @Name, @PackageType, @Price, @Point, @ValidDays, @DaysPass, @LastValidDate, @Link, @RecordStatus, @CreatedDate, @CreatedUserID, @ModifiedDate, @ModifiedUserID, @GroupEntityID, @TerminalGroupID, @ProductID, @ImageID, @Remark )", conn, transaction);
 
                         insertPackageCmd.Parameters.AddWithValue("@PackageNo", (object)packageToCopy.PackageNo ?? DBNull.Value);
                         insertPackageCmd.Parameters.AddWithValue("@Name", packageToCopy.Name);
@@ -247,7 +281,7 @@ namespace AdminPortal.Data
                         insertPackageCmd.Parameters.AddWithValue("@ProductID", packageToCopy.ProductID);
                         insertPackageCmd.Parameters.AddWithValue("@ImageID", (object)packageToCopy.ImageID ?? DBNull.Value);
                         insertPackageCmd.Parameters.AddWithValue("@Remark", (object)packageToCopy.Remark ?? DBNull.Value);
-                        insertPackageCmd.Parameters.AddWithValue("@Nationality", (object)packageToCopy.Nationality ?? DBNull.Value);
+                      
                         await insertPackageCmd.ExecuteNonQueryAsync();
 
                         // 4. Read package items
@@ -267,7 +301,8 @@ namespace AdminPortal.Data
                                     Price = reader["ItemPrice"] as decimal?,
                                     Point = reader["ItemPoint"] as int?,
                                     AgeCategory = reader["AgeCategory"].ToString(),
-                                    EntryQty = (int)reader["EntryQty"]
+                                    EntryQty = (int)reader["EntryQty"],
+                                    Nationality = reader.HasColumn("Nationality") && reader["Nationality"] is not DBNull ? reader["Nationality"].ToString() : null
                                 });
                             }
                         }
@@ -276,8 +311,8 @@ namespace AdminPortal.Data
                         foreach (var item in itemsToCopy)
                         {
                             var insertItemCmd = new SqlCommand(
-                                @"INSERT INTO App_PackageItemAO (PackageID, PackageQty, ItemName, ItemType, ItemPrice, ItemPoint, AgeCategory, EntryQty) 
-                                  VALUES (@PackageID, @PackageQty, @ItemName, @itemType, @ItemPrice, @ItemPoint, @AgeCategory, @EntryQty)", conn, transaction);
+                                @"INSERT INTO App_PackageItemAO (PackageID, PackageQty, ItemName, ItemType, ItemPrice, ItemPoint, AgeCategory, EntryQty, Nationality) 
+                                  VALUES (@PackageID, @PackageQty, @ItemName, @itemType, @ItemPrice, @ItemPoint, @AgeCategory, @EntryQty, @Nationality)", conn, transaction);
 
                             insertItemCmd.Parameters.AddWithValue("@PackageID", item.PackageID);
                             insertItemCmd.Parameters.AddWithValue("@ItemName", item.ItemName);
@@ -287,6 +322,7 @@ namespace AdminPortal.Data
                             insertItemCmd.Parameters.AddWithValue("@AgeCategory", item.AgeCategory);
                             insertItemCmd.Parameters.AddWithValue("@PackageQty", item.EntryQty);
                             insertItemCmd.Parameters.AddWithValue("@EntryQty", item.EntryQty);
+                            insertItemCmd.Parameters.AddWithValue("@Nationality", (object)item.Nationality ?? DBNull.Value);
                             await insertItemCmd.ExecuteNonQueryAsync();
                         }
 
@@ -300,8 +336,140 @@ namespace AdminPortal.Data
                 }
             }
         }
+        
         #endregion
+        #region -- Duplicate Package --
+        public async Task<int> DuplicatePackageAsync(int originalPackageId, int newUserId)
+        {
+            using (var conn = _databaseHelper.GetConnection())
+            {
+                await conn.OpenAsync();
+                using (var transaction = conn.BeginTransaction())
+                {
+                    try
+                    {
+                        // 1. Read the original package
+                        var selectPackageCmd = new SqlCommand("SELECT * FROM Packages WHERE PackageID = @PackageID", conn, transaction);
+                        selectPackageCmd.Parameters.AddWithValue("@PackageID", originalPackageId);
 
+                        Package packageToCopy = null;
+                        using (var reader = await selectPackageCmd.ExecuteReaderAsync())
+                        {
+                            if (await reader.ReadAsync())
+                            {
+                                packageToCopy = new Package
+                                {
+                                    Name = reader["Name"].ToString() + " (Copy)", // Add (Copy) suffix
+                                    PackageType = reader["PackageType"].ToString(),
+                                    Price = (decimal)reader["Price"],
+                                    Point = (int)reader["Point"],
+                                    ValidDays = (int)reader["ValidDays"],
+                                    DaysPass = (int)reader["DaysPass"],
+                                    LastValidDate = (DateTime)reader["LastValidDate"],
+                                    Link = reader["Link"]?.ToString(),
+                                    GroupEntityID = (int)reader["GroupEntityID"],
+                                    TerminalGroupID = (int)reader["TerminalGroupID"],
+                                    ProductID = (long)reader["ProductID"],
+                                    ImageID = reader["ImageID"]?.ToString(),
+                                    Remark = reader["Remark"]?.ToString()
+                                    // We ignore Status, Created/Modified fields as they will be new
+                                };
+                            }
+                        }
+                        if (packageToCopy == null)
+                        {
+                            throw new Exception("Original package not found.");
+                        }
+
+                        // 2. Read original package items
+                        var selectItemsCmd = new SqlCommand("SELECT * FROM PackageItem WHERE PackageID = @PackageID", conn, transaction);
+                        selectItemsCmd.Parameters.AddWithValue("@PackageID", originalPackageId);
+
+                        var itemsToCopy = new List<PackageItem>();
+                        using (var reader = await selectItemsCmd.ExecuteReaderAsync())
+                        {
+                            while (await reader.ReadAsync())
+                            {
+                                itemsToCopy.Add(new PackageItem
+                                {
+                                    ItemName = reader["ItemName"].ToString(),
+                                    itemType = reader["itemType"].ToString(),
+                                    Price = reader["ItemPrice"] as decimal?,
+                                    Point = reader["ItemPoint"] as int?,
+                                    AgeCategory = reader["AgeCategory"].ToString(),
+                                    EntryQty = (int)reader["EntryQty"],
+                                    Nationality = reader.HasColumn("Nationality") && reader["Nationality"] is not DBNull ? reader["Nationality"].ToString() : null
+                                    // We ignore CreatedUserID as it will be new
+                                });
+                            }
+                        }
+
+                        // 3. Insert the new package as "Draft"
+                        var insertPackageCmd = new SqlCommand(
+                            @"INSERT INTO Packages(
+                                Name, PackageType, Price, Point, ValidDays, DaysPass,
+                                LastValidDate, Link, RecordStatus, CreatedDate, CreatedUserID,
+                                ModifiedDate, ModifiedUserID, GroupEntityID, TerminalGroupID,
+                                ProductID, ImageID, Remark
+                            ) VALUES (
+                                @Name, @PackageType, @Price, @Point, @ValidDays, @DaysPass,
+                                @LastValidDate, @Link, 'Draft', GETDATE(), @CreatedUserID,
+                                GETDATE(), @ModifiedUserID, @GroupEntityID, @TerminalGroupID,
+                                @ProductID, @ImageID, @Remark
+                            );
+                            SELECT SCOPE_IDENTITY();", conn, transaction);
+
+                        insertPackageCmd.Parameters.AddWithValue("@Name", packageToCopy.Name);
+                        insertPackageCmd.Parameters.AddWithValue("@PackageType", packageToCopy.PackageType);
+                        insertPackageCmd.Parameters.AddWithValue("@Price", packageToCopy.Price);
+                        insertPackageCmd.Parameters.AddWithValue("@Point", packageToCopy.Point);
+                        insertPackageCmd.Parameters.AddWithValue("@ValidDays", packageToCopy.ValidDays);
+                        insertPackageCmd.Parameters.AddWithValue("@DaysPass", packageToCopy.DaysPass);
+                        insertPackageCmd.Parameters.AddWithValue("@LastValidDate", packageToCopy.LastValidDate);
+                        insertPackageCmd.Parameters.AddWithValue("@Link", (object)packageToCopy.Link ?? DBNull.Value);
+                        insertPackageCmd.Parameters.AddWithValue("@CreatedUserID", newUserId);
+                        insertPackageCmd.Parameters.AddWithValue("@ModifiedUserID", newUserId);
+                        insertPackageCmd.Parameters.AddWithValue("@GroupEntityID", packageToCopy.GroupEntityID);
+                        insertPackageCmd.Parameters.AddWithValue("@TerminalGroupID", packageToCopy.TerminalGroupID);
+                        insertPackageCmd.Parameters.AddWithValue("@ProductID", packageToCopy.ProductID);
+                        insertPackageCmd.Parameters.AddWithValue("@ImageID", (object)packageToCopy.ImageID ?? DBNull.Value);
+                        insertPackageCmd.Parameters.AddWithValue("@Remark", (object)packageToCopy.Remark ?? DBNull.Value);
+
+                        int newPackageId = Convert.ToInt32(await insertPackageCmd.ExecuteScalarAsync());
+
+                        // 4. Insert the new package items
+                        foreach (var item in itemsToCopy)
+                        {
+                            var insertItemCmd = new SqlCommand(
+                                @"INSERT INTO PackageItem (PackageID, ItemName, itemType, ItemPrice, ItemPoint, AgeCategory, EntryQty, CreatedUserID, Nationality)
+                                  VALUES (@PackageID, @ItemName, @itemType, @ItemPrice, @ItemPoint, @AgeCategory, @EntryQty, @CreatedUserID, @Nationality)", conn, transaction);
+
+                            insertItemCmd.Parameters.AddWithValue("@PackageID", newPackageId); // Use new ID
+                            insertItemCmd.Parameters.AddWithValue("@ItemName", item.ItemName);
+                            insertItemCmd.Parameters.AddWithValue("@itemType", item.itemType);
+                            insertItemCmd.Parameters.AddWithValue("@ItemPrice", (object)item.Price ?? DBNull.Value);
+                            insertItemCmd.Parameters.AddWithValue("@ItemPoint", (object)item.Point ?? DBNull.Value);
+                            insertItemCmd.Parameters.AddWithValue("@AgeCategory", item.AgeCategory);
+                            insertItemCmd.Parameters.AddWithValue("@EntryQty", item.EntryQty);
+                            insertItemCmd.Parameters.AddWithValue("@CreatedUserID", newUserId); // Use new user ID
+                            insertItemCmd.Parameters.AddWithValue("@Nationality", (object)item.Nationality ?? DBNull.Value);
+
+                            await insertItemCmd.ExecuteNonQueryAsync();
+                        }
+
+                        // 5. Commit
+                        transaction.Commit();
+                        return newPackageId;
+                    }
+                    catch (Exception)
+                    {
+                        transaction.Rollback();
+                        throw; // Re-throw the exception so the controller can catch it
+                    }
+                }
+            }
+        }
+        #endregion
         #region -- Map Package From Reader Helper Method --
         private Package MapPackageFromReader(SqlDataReader reader)
         {
@@ -327,7 +495,7 @@ namespace AdminPortal.Data
                 ProductID = reader["ProductID"] is DBNull ? 0 : (long)reader["ProductID"],
                 ImageID = reader["ImageID"] is DBNull ? null : reader["ImageID"].ToString(),
                 Remark = reader["Remark"] is DBNull ? null : reader["Remark"].ToString(),
-                Nationality = reader["Nationality"] is DBNull ? null : reader["Nationality"].ToString()
+                
             };
 
             if (reader.HasColumn("CreatedByName"))

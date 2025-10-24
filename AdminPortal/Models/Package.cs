@@ -91,7 +91,7 @@ namespace AdminPortal.Models
 
         [Required]
         public string AgeCategory { get; set; }
-
+        public string? Nationality { get; set; }  // NEW
         [Required]
         public int EntryQty { get; set; }
 
@@ -157,7 +157,6 @@ namespace AdminPortal.Models
         public long ProductID { get; set; }
         public string? ImageID { get; set; }
         public string? Remark { get; set; }
-        public string? Nationality { get; set; }
 
         [NotMapped]
         public string? CreatedByName { get; set; }

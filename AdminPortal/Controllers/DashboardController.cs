@@ -31,70 +31,93 @@ public class DashboardController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetPackages([FromQuery] string status)
     {
-        // Get department from JWT claims
-        var department = User.Claims.FirstOrDefault(c => c.Type == "department")?.Value;
+        try { 
+            // Get department from JWT claims
+            var department = User.Claims.FirstOrDefault(c => c.Type == "department")?.Value;
 
-        // Security Check: Only TP department can view Draft packages
-        if (status == "Draft" && department != "TP")
-        {
-            return Forbid(); // Returns 403 Forbidden
-        }
-
-        // Pass the status filter from the URL to your repository method
-        var allPackages = await _packageRepo.GetAllAsync(status);
-
-        // Additional security: Filter out Draft packages for non-TP users in "Show All"
-        if (status == "Show All" && department != "TP")
-        {
-            allPackages = allPackages.Where(p => p.Status != "Draft").ToList();
-        }
-
-        var summaryList = new List<PackageSummaryViewModel>();
-        var baseUrl = $"{Request.Scheme}://{Request.Host}";
-
-        foreach (var package in allPackages)
-        {
-            var items = await _packageItemRepo.GetItemsByPackageIdAsync(package.PackageID);
-            string imageUrl = $"{baseUrl}/images/wynsnow.jpg";
-
-            if (!string.IsNullOrEmpty(package.ImageID) && int.TryParse(package.ImageID, out int imageId))
+            // Security Check: Only TP department can view Draft packages
+            if (status == "Draft" && department != "TP")
             {
-                var specificUrl = await _packageImageRepo.GetUrlByIdAsync(imageId);
-                if (!string.IsNullOrEmpty(specificUrl))
+                return Forbid(); // Returns 403 Forbidden
+            }
+
+            // Pass the status filter from the URL to your repository method
+            var allPackages = await _packageRepo.GetAllAsync(status);
+
+            // Additional security: Filter out Draft packages for non-TP users in "Show All"
+            if (status == "Show All" && department != "TP")
+            {
+                allPackages = allPackages.Where(p => p.Status != "Draft").ToList();
+            }
+
+            var summaryList = new List<PackageSummaryViewModel>();
+            var baseUrl = $"{Request.Scheme}://{Request.Host}";
+
+            foreach (var package in allPackages)
+            {
+                List<PackageItem> items;
+                if (package.Status == "Approved")
                 {
-                    imageUrl = $"{baseUrl}{specificUrl}";
+                    // If package is Approved, get items from App_PackageItemAO
+                    items = await _packageItemRepo.GetApprovedItemsByPackageIdAsync(package.PackageID);
                 }
+                else
+                {
+                    // Otherwise (Pending, Draft, etc.), get items from the staging PackageItem table
+                    items = await _packageItemRepo.GetItemsByPackageIdAsync(package.PackageID);
+                }
+
+                string imageUrl = $"{baseUrl}/images/wynsnow.jpg";
+
+                if (!string.IsNullOrEmpty(package.ImageID) && int.TryParse(package.ImageID, out int imageId))
+                {
+                    var specificUrl = await _packageImageRepo.GetUrlByIdAsync(imageId);
+                    if (!string.IsNullOrEmpty(specificUrl))
+                    {
+                        imageUrl = $"{baseUrl}{specificUrl}";
+                    }
+                }
+
+                decimal totalPrice = 0;
+                int totalPoints = 0;
+
+                if (package.PackageType.Equals("Entry", StringComparison.OrdinalIgnoreCase))
+                {
+                    totalPrice = items.Sum(item => item.Price ?? 0);
+                }
+                else if (package.PackageType.Equals("Point", StringComparison.OrdinalIgnoreCase) || package.PackageType.Equals("Reward", StringComparison.OrdinalIgnoreCase))
+                {
+                    totalPoints = items.Sum(item => item.Point ?? 0);
+                }
+
+
+                summaryList.Add(new PackageSummaryViewModel
+                {
+                    Id = package.PackageID,
+                    Name = package.Name,
+                    ImageUrl = imageUrl,
+                    PackageType = package.PackageType,
+                    Category = items.FirstOrDefault()?.AgeCategory ?? "N/A",
+                    Status = package.Status,
+                    Price = totalPrice,
+                    Point = totalPoints,
+                    DateCreated = package.CreatedDate,
+                    EntryQty = items.Sum(item => item.EntryQty) // Sum the quantity from all items
+                });
             }
 
-            decimal totalPrice = 0;
-            int totalPoints = 0;
-
-            if (package.PackageType.Equals("Entry", StringComparison.OrdinalIgnoreCase))
+            return Ok(summaryList);
+        }
+        catch (Exception ex)
+        {
+            // --- PUT A BREAKPOINT ON THE LINE BELOW ---
+            return StatusCode(500, new
             {
-                totalPrice = items.Sum(item => item.Price ?? 0);
-            }
-            else if (package.PackageType.Equals("Point", StringComparison.OrdinalIgnoreCase) || package.PackageType.Equals("Reward", StringComparison.OrdinalIgnoreCase))
-            {
-                totalPoints = items.Sum(item => item.Point ?? 0);
-            }
-
-
-            summaryList.Add(new PackageSummaryViewModel
-            {
-                Id = package.PackageID,
-                Name = package.Name,
-                ImageUrl = imageUrl,
-                PackageType = package.PackageType,
-                Category = items.FirstOrDefault()?.AgeCategory ?? "N/A",
-                Status = package.Status,
-                Price = totalPrice,
-                Point = totalPoints,
-                DateCreated = package.CreatedDate,
-                EntryQty = items.Sum(item => item.EntryQty) // Sum the quantity from all items
+                message = "An error occurred while fetching packages.",
+                error = ex.Message,
+                innerError = ex.InnerException?.Message // This will often have the SQL error
             });
         }
-
-        return Ok(summaryList);
     }
     #endregion
 

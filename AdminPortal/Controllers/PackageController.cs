@@ -105,6 +105,7 @@ public class PackageController : ControllerBase
 
             foreach (var item in model.Items)
             {
+                item.Nationality = model.Nationality;
                 item.Price = null;
                 item.Point = null;
 
@@ -156,7 +157,7 @@ public class PackageController : ControllerBase
     [Authorize(Policy = "FinanceOnly")] //  policy for FN users
     public async Task<IActionResult> UpdatePackageStatus(int id, [FromBody] StatusUpdateModel model)
     {
-        if (model == null || (model.Status != "Approved" && model.Status != "Rejected"))
+        if (model == null || string.IsNullOrEmpty(model.Status))
         {
             return BadRequest("Invalid status provided.");
         }
@@ -168,14 +169,65 @@ public class PackageController : ControllerBase
             return Unauthorized("User ID is not available in token.");
         }
 
-        var success = await _packageRepository.UpdatePackageStatusAsync(id, model.Status, userId);
-
-        if (!success)
+        try
         {
-            return NotFound(new { message = "Package not found or status could not be updated." });
+            // --- LOGIC FIX: Call the correct repository methods ---
+            if (model.Status == "Approved")
+            {
+                // Use the method that copies to App_PackageAO tables
+                await _packageRepository.ApprovePackageAsync(id, userId);
+                return Ok(new { message = "Package approved and transferred successfully." });
+            }
+            else if (model.Status == "Rejected")
+            {
+                // Use the dedicated reject method
+                await _packageRepository.RejectPackageAsync(id, userId);
+                return Ok(new { message = "Package rejected successfully." });
+            }
+            else
+            {
+                // Only use the simple status update for other statuses (if any)
+                var success = await _packageRepository.UpdatePackageStatusAsync(id, model.Status, userId);
+                if (!success)
+                {
+                    return NotFound(new { message = "Package not found or status could not be updated." });
+                }
+                return Ok(new { message = $"Package status updated to {model.Status}" });
+            }
         }
-
-        return Ok(new { message = $"Package status updated to {model.Status}" });
+        catch (Exception ex)
+        {
+            // Log the exception
+            return StatusCode(500, $"An internal server error occurred: {ex.Message}");
+        }
     }
     #endregion
+
+    #region -- Duplicate Package Post Method --
+    [HttpPost("{id}/duplicate")]
+    [Authorize(Policy = "CanCreatePackage")] // Only users who can create can duplicate
+    public async Task<IActionResult> DuplicatePackage(int id)
+    {
+        try
+        {
+            // Get current user ID from the token
+            var userIdString = User.FindFirst("userId")?.Value;
+            if (string.IsNullOrEmpty(userIdString) || !int.TryParse(userIdString, out int userId))
+            {
+                return Unauthorized("User ID is not available in token.");
+            }
+
+            // Call the new repository method
+            int newPackageId = await _packageRepository.DuplicatePackageAsync(id, userId);
+
+            return Ok(new { message = "Package duplicated successfully as Draft.", newPackageId = newPackageId });
+        }
+        catch (Exception ex)
+        {
+            // Log the exception
+            return StatusCode(500, $"An internal server error occurred: {ex.Message}");
+        }
+    }
+    #endregion
+
 }
