@@ -1,8 +1,8 @@
 ﻿using Microsoft.Data.SqlClient;
 using System.Data;
-namespace AdminPortal.Data //declare the namespace for this file
+namespace be_general_support_api.Data //declare the namespace for this file
 {
-    #region -- DB connection
+    #region -- DB connection --
     public class DatabaseHelper
     {
         private readonly string _connectionString; //declare a read only file loaded from appsetting.json
@@ -18,6 +18,8 @@ namespace AdminPortal.Data //declare the namespace for this file
             }
     }
     #endregion
+
+    #region -- Extension Method Check Column Existant --
     public static class SqlDataReaderExtensions 
     {
         public static bool HasColumn(this SqlDataReader dr, string columnName)
@@ -30,4 +32,5 @@ namespace AdminPortal.Data //declare the namespace for this file
             return false;
         }
     }
+    #endregion
 }

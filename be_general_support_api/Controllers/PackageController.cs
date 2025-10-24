@@ -1,5 +1,5 @@
-﻿using AdminPortal.Data;
-using AdminPortal.Models;
+﻿using be_general_support_api.Data;
+using be_general_support_api.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -34,8 +34,9 @@ public class PackageController : ControllerBase
     #endregion
 
     #region -- Package Age & Attraction Get Method --
+    // Route: GET /api/package/creationdata
     // This endpoint provides the necessary data to build the "Insert Package" form on the front-end
-    [HttpGet("creationdata")] // Route: GET /api/package/creationdata
+    [HttpGet("creationdata")] 
     public async Task<IActionResult> GetPackageCreationData()
     {
         var ageCategories = await _ageCategoryRepository.GetAllAsync();
@@ -52,6 +53,8 @@ public class PackageController : ControllerBase
     #endregion
 
     #region -- Image Upload Post Method --
+    // Route: POST /api/package/upload
+    //This endpoint handles image uploads for packages
     [HttpPost("upload")]
     [Authorize(Policy = "CanCreatePackage")]
     public async Task<IActionResult> UploadImage(IFormFile file)
@@ -82,6 +85,8 @@ public class PackageController : ControllerBase
     #endregion
 
     #region -- Insert Package Post Method --
+    // Route: POST /api/package/create
+    // This endpoint handles the creation of a new package along with its items
     [HttpPost("create")]
     [Authorize(Policy = "CanCreatePackage")]
     public async Task<IActionResult> InsertPackage([FromBody] PackageViewModel model)
@@ -147,12 +152,14 @@ public class PackageController : ControllerBase
         catch (Exception ex)
         {
             // Log the exception
-            return StatusCode(500, $"An internal server error occurred: {ex.Message}");
+            return StatusCode(500, new { message = $"An internal server error occurred: {ex.Message}" });
         }
     }
     #endregion
 
     #region -- Finance Approve Reject Put Method --
+    // Route: PUT /api/package/{id}/status
+    // This endpoint allows finance users to approve or reject packages
     [HttpPut("{id}/status")]
     [Authorize(Policy = "FinanceOnly")] //  policy for FN users
     public async Task<IActionResult> UpdatePackageStatus(int id, [FromBody] StatusUpdateModel model)
@@ -198,12 +205,14 @@ public class PackageController : ControllerBase
         catch (Exception ex)
         {
             // Log the exception
-            return StatusCode(500, $"An internal server error occurred: {ex.Message}");
+            return StatusCode(500, new { message = $"An internal server error occurred: {ex.Message}" });
         }
     }
     #endregion
 
     #region -- Duplicate Package Post Method --
+    // Route: POST /api/package/{id}/duplicate
+    // This endpoint allows users to duplicate an existing package as a Draft
     [HttpPost("{id}/duplicate")]
     [Authorize(Policy = "CanCreatePackage")] // Only users who can create can duplicate
     public async Task<IActionResult> DuplicatePackage(int id)
@@ -225,7 +234,7 @@ public class PackageController : ControllerBase
         catch (Exception ex)
         {
             // Log the exception
-            return StatusCode(500, $"An internal server error occurred: {ex.Message}");
+            return StatusCode(500, new { message = $"An internal server error occurred: {ex.Message}" });
         }
     }
     #endregion

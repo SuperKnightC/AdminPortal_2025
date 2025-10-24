@@ -1,4 +1,4 @@
-﻿using AdminPortal.Models;
+﻿using be_general_support_api.Models;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
@@ -6,9 +6,15 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 
-namespace AdminPortal.Services
+namespace be_general_support_api.Services
 {
+    //This class represents the authenticated user information used for token generation
+
     #region-- Token Service for JWT Generation --
+    // This service is responsible for generating JWT tokens for authenticated users
+    // It uses configuration settings for the JWT key, issuer, and audience
+    // The generated token includes claims for user identification and department
+    // The token is valid for 24 hours from the time of issuance
     public class TokenService
     {
         private readonly IConfiguration _config;
@@ -43,6 +49,8 @@ namespace AdminPortal.Services
     #endregion
 
     #region -- Filter to Prevent Caching --
+    //This class is used as an attribute to prevent caching on API responses
+    //This mean browser will not store the response, ensuring fresh data on each request 
     public class NoCacheAttribute : ActionFilterAttribute
     {
         public override void OnResultExecuting(ResultExecutingContext context)

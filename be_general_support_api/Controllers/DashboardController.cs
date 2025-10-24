@@ -1,6 +1,6 @@
-﻿using AdminPortal.Data;
-using AdminPortal.Models;
-using AdminPortal.Services;
+﻿using be_general_support_api.Data;
+using be_general_support_api.Models;
+using be_general_support_api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Linq;
@@ -28,8 +28,10 @@ public class DashboardController : ControllerBase
     #endregion
 
     #region -- All Packages Get Method --
+    // Route: GET /api/dashboard?status=Approved
+    // This endpoint retrieves all packages with optional status filtering
     [HttpGet]
-    public async Task<IActionResult> GetPackages([FromQuery] string status)
+    public async Task<IActionResult> GetPackages([FromQuery] string status) // Possible values: "Approved", "Pending", "Draft", "Show All"
     {
         try { 
             // Get department from JWT claims
@@ -42,7 +44,7 @@ public class DashboardController : ControllerBase
             }
 
             // Pass the status filter from the URL to your repository method
-            var allPackages = await _packageRepo.GetAllAsync(status);
+            var allPackages = await _packageRepo.GetAllAsync(status); // Modify this method to accept status filter
 
             // Additional security: Filter out Draft packages for non-TP users in "Show All"
             if (status == "Show All" && department != "TP")
@@ -122,10 +124,12 @@ public class DashboardController : ControllerBase
     #endregion
 
     #region -- Package Detail Get Method --
-    [HttpGet("{id}")] // Route: GET /api/dashboard/5
+    // Route: GET /api/dashboard/5
+    // This endpoint retrieves detailed information about a specific package by ID
+    [HttpGet("{id}")] 
     public async Task<IActionResult> GetDetail(int id)
     {
-        var packageData = await _packageRepo.GetPackageByIdAsync(id);
+        var packageData = await _packageRepo.GetPackageByIdAsync(id); // Retrieve package data by ID
         if (packageData == null)
         {
             return NotFound();
@@ -140,7 +144,7 @@ public class DashboardController : ControllerBase
             return Forbid(); // Returns 403 Forbidden
         }
 
-        var packageItems = await _packageItemRepo.GetItemsByPackageIdAsync(id);
+        var packageItems = await _packageItemRepo.GetItemsByPackageIdAsync(id); // Retrieve package items by PackageID
         var baseUrl = $"{Request.Scheme}://{Request.Host}";
 
         // CODE FOR HANDLING THE ImageID STRING ---
@@ -204,6 +208,8 @@ public class DashboardController : ControllerBase
     #endregion
 
     #region -- Approve Package Post Method --
+    // Route: POST /api/dashboard/approve/5 the 5 is the package ID
+    // This endpoint approves a package and transfers it to the approved tables
     [HttpPost("approve/{id}")]
     public async Task<IActionResult> Approve(int id)
     {
@@ -227,6 +233,8 @@ public class DashboardController : ControllerBase
     #endregion
 
     #region -- Reject Package Post Method --
+    // Route: POST /api/dashboard/reject/5 the 5 is the package ID
+    // This endpoint rejects a package
     [HttpPost("reject/{id}")]
     public async Task<IActionResult> Reject(int id)
     {

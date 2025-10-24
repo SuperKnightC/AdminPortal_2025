@@ -1,9 +1,7 @@
-using AdminPortal.Data;
-using AdminPortal.Services;
+using be_general_support_api.Data;
+using be_general_support_api.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Text;
@@ -12,13 +10,14 @@ using System.Security.Claims;
 var builder = WebApplication.CreateBuilder(args);
 builder.Logging.AddConsole();
 builder.Logging.AddDebug();
-// 1. Retrieve the connection string from configuration
+
+// 1. Retrieve the connection string
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
 // 2. Register DatabaseHelper
 builder.Services.AddScoped<DatabaseHelper>(_ => new DatabaseHelper(connectionString));
 
-// 3. Register UserRepository
+// 3. Register Repositories
 builder.Services.AddScoped<UserRepository>();
 builder.Services.AddScoped<PackageRepository>();
 builder.Services.AddScoped<PackageItemRepository>();
@@ -27,16 +26,16 @@ builder.Services.AddScoped<AttractionRepository>();
 builder.Services.AddScoped<PackageImageRepository>();
 builder.Services.AddScoped<TokenService>();
 
-
-builder.Services.AddControllersWithViews();// Enable MVC with views support
-
+// 4. Add MVC Controllers
+builder.Services.AddControllersWithViews();
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
-        // This line is the fix
+        // Fix JSON serialization to use camelCase
         options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
     });
 
+// 5. Add Authorization Policies
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("FinanceOnly", policy =>
@@ -47,48 +46,45 @@ builder.Services.AddAuthorization(options =>
         policy.RequireClaim("department", "TP"));
 });
 
+// 6. Add CORS for React App
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReactApp",
         policy =>
         {
-            // The URL your React app runs on. Vite's default is 5173.
-            policy.WithOrigins("http://localhost:5173")
+            policy.WithOrigins("http://localhost:5173") // React app URL
                   .AllowAnyHeader()
                   .AllowAnyMethod()
                   .AllowCredentials();
         });
 });
 
-// In Program.cs
+// 7. Add JWT Authentication
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
-        options.RequireHttpsMetadata = false; // allow localhost & ngrok
+        options.RequireHttpsMetadata = false; // Allow localhost & ngrok
         options.SaveToken = true;
 
         options.Events = new JwtBearerEvents
         {
             OnAuthenticationFailed = context =>
             {
-                Console.WriteLine("Token validation failed:");
-                Console.WriteLine(context.Exception.ToString());
+                // You can add logging here if needed
                 return Task.CompletedTask;
             },
             OnChallenge = context =>
             {
-                Console.WriteLine("Authentication challenge triggered.");
-                Console.WriteLine($"Error: {context.Error ?? "(none)"}");
-                Console.WriteLine($"Description: {context.ErrorDescription ?? "(none)"}");
-                Console.WriteLine($"Failure: {context.AuthenticateFailure?.Message ?? "(no failure object)"}");
+                // You can add logging here if needed
                 return Task.CompletedTask;
             },
             OnMessageReceived = context =>
             {
                 var authHeader = context.Request.Headers["Authorization"].FirstOrDefault();
-                Console.WriteLine($"Authorization header: {authHeader}");
                 if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer "))
+                {
                     context.Token = authHeader.Substring("Bearer ".Length).Trim();
+                }
                 return Task.CompletedTask;
             }
         };
@@ -99,37 +95,38 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"])),
             ValidateLifetime = true,
             ClockSkew = TimeSpan.Zero,
-
-            // For development with ngrok, we are keeping these disabled for now
-            ValidateIssuer = false,
-            ValidateAudience = false,
+            ValidateIssuer = false,  // For development
+            ValidateAudience = false // For development
         };
     });
-var app = builder.Build(); // Build the app
+
+var app = builder.Build();
+
+// --- Configure the HTTP request pipeline ---
+
 app.UseForwardedHeaders(new ForwardedHeadersOptions
 {
     ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
 });
-if (!app.Environment.IsDevelopment())  // Configure the HTTP request pipeline for production
+
+// Use developer exception page in development, otherwise use error handler
+if (app.Environment.IsDevelopment())
 {
     app.UseDeveloperExceptionPage();
+}
+else
+{
     app.UseExceptionHandler("/Home/Error");
     app.UseHsts();
 }
+
 app.UseStaticFiles(); // Serve static files from wwwroot
-app.UseRouting(); // Build Route table before executing
+app.UseRouting();
 app.UseCors("AllowReactApp"); // Enable Frontend to access this API
-app.UseAntiforgery(); // Enable Anti-forgery token validation
-app.Use(async (context, next) =>
-{
-    var authHeader = context.Request.Headers["Authorization"].FirstOrDefault();
-    Console.WriteLine("Authorization Header: " + authHeader);
-    await next();
-});
-app.UseAuthentication(); //Look for JWT token in the request
-app.UseAuthorization(); // Check if the user is authorized to access the resource
-app.MapControllers();
-app.MapControllerRoute(
-    name: "default",
-    pattern: "{controller=Dashboard}/{action=Index}/{id?}");
+
+app.UseAuthentication(); // Look for JWT token
+app.UseAuthorization(); // Check if the user is authorized
+
+app.MapControllers(); // Map API controllers
+
 app.Run();

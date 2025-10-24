@@ -4,9 +4,13 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace AdminPortal.Models
+namespace be_general_support_api.Models
 {
+    // These Models are used for Package creation, insertion, and DB mapping
+
     #region -- Package Frontend Insert View Model --
+    // This model is used to capture package data from the front-end form
+    // It includes validation logic to ensure data integrity
     public class PackageViewModel : IValidatableObject
     {
         [Required(ErrorMessage = "Package Name is required.")]
@@ -74,6 +78,8 @@ namespace AdminPortal.Models
     #endregion
 
     #region-- PackageItem Model for DB Mapping --
+    // This model represents individual items within a package
+    // It includes validation to ensure item data integrity
     public class PackageItem : IValidatableObject
     {
         [Required]
@@ -111,6 +117,7 @@ namespace AdminPortal.Models
     #endregion
 
     #region-- AgeCategory Model--
+    // This model represents age categories for package items
     public class AgeCategory
     {
         public string AgeCode { get; set; }
@@ -120,6 +127,7 @@ namespace AdminPortal.Models
     #endregion
 
     #region -- Attraction Model--
+    // This model represents attractions associated with packages
     public class Attraction
     {
         public string Name { get; set; }
@@ -127,6 +135,7 @@ namespace AdminPortal.Models
     #endregion
 
     #region-- Package Image Insert Model--
+    //  This model represents package images
     public class PackageImage
     {
         public int ImageID { get; set; }
@@ -135,6 +144,7 @@ namespace AdminPortal.Models
     #endregion
 
     #region -- Package Model for DB Mapping --
+    // This model maps to the Package table in the database
     public class Package
     {
         public int PackageID { get; set; }
@@ -173,6 +183,7 @@ namespace AdminPortal.Models
     #endregion
 
     #region -- Status Model --
+    // This model is used for updating package status
     public class StatusUpdateModel
     {
         public string Status { get; set; }

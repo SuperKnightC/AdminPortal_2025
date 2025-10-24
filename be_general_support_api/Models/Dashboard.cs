@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace AdminPortal.Models
+namespace be_general_support_api.Models
 {
     //This Models are essentially used for displaying Packages and Its details on the dashboard pages
 
@@ -21,7 +21,6 @@ namespace AdminPortal.Models
         public DateTime DateCreated { get; set; } 
     }
     #endregion
-
 
     #region-- Package Detail View Model --
     // Detailed view after clicking on a package from the summary view
@@ -49,7 +48,6 @@ namespace AdminPortal.Models
         public List<PackageItemDetail> Items { get; set; } = new List<PackageItemDetail>();
     }
     #endregion
-
 
     #region-- Helper Class for Package Item Details --
     // Display each attraction/item within a package

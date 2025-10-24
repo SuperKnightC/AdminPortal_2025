@@ -1,15 +1,16 @@
-﻿using AdminPortal.Models;
+﻿using be_general_support_api.Models;
 using Microsoft.Data.SqlClient;
 using System.Collections.Generic;
 using System.Data;
 using System.Threading.Tasks;
 
-namespace AdminPortal.Data
+namespace be_general_support_api.Data
 {
     //This Repo Handle Package Item 
 
     #region-- PackageItem Insert--
-    // Main Class: Handles Package Items
+    // Consolidated Class: Handles Package Items
+    // Responsible for inserting and retrieving package items from the database
     public class PackageItemRepository
     {
         private readonly DatabaseHelper _databaseHelper;
@@ -18,7 +19,7 @@ namespace AdminPortal.Data
             _databaseHelper = databaseHelper;
         }
 
-        public async Task InsertPackageItem(PackageItem item, int createdUserId)
+        public async Task InsertPackageItem(PackageItem item, int createdUserId) // Insert package item into the database
         {
             using (var conn = _databaseHelper.GetConnection())
             {
@@ -41,7 +42,7 @@ namespace AdminPortal.Data
                 await cmd.ExecuteNonQueryAsync();
             }
         }
-        public async Task<List<PackageItem>> GetItemsByPackageIdAsync(int packageId)
+        public async Task<List<PackageItem>> GetItemsByPackageIdAsync(int packageId) // Retrieve package items by PackageID
         {
             var items = new List<PackageItem>();
             using (var conn = _databaseHelper.GetConnection())
@@ -69,7 +70,7 @@ namespace AdminPortal.Data
             return items;
 
         }
-        public async Task<List<PackageItem>> GetApprovedItemsByPackageIdAsync(int packageId)
+        public async Task<List<PackageItem>> GetApprovedItemsByPackageIdAsync(int packageId) // Retrieve approved package items from App_PackageItemAO by PackageID
         {
             var items = new List<PackageItem>();
             using (var conn = _databaseHelper.GetConnection())
@@ -115,7 +116,7 @@ namespace AdminPortal.Data
             _databaseHelper = databaseHelper;
         }
 
-        public async Task<List<AgeCategory>> GetAllAsync()
+        public async Task<List<AgeCategory>> GetAllAsync() // Retrieve all active age categories from the database
         {
             var categories = new List<AgeCategory>();
             using (var conn = _databaseHelper.GetConnection())
@@ -150,7 +151,7 @@ namespace AdminPortal.Data
             _databaseHelper = databaseHelper;
         }
 
-        public async Task<List<Attraction>> GetAllActiveAsync()
+        public async Task<List<Attraction>> GetAllActiveAsync() // Retrieve all active attractions from the database
         {
             var attractions = new List<Attraction>();
             using (var conn = _databaseHelper.GetConnection())
@@ -184,7 +185,7 @@ namespace AdminPortal.Data
             _databaseHelper = databaseHelper;
         }
 
-        public async Task<int> InsertAsync(string imageUrl)
+        public async Task<int> InsertAsync(string imageUrl) // Insert package image URL into the database and return the new ImageID
         {
             using (var conn = _databaseHelper.GetConnection())
             {
@@ -198,7 +199,7 @@ namespace AdminPortal.Data
                 return Convert.ToInt32(result);
             }
         }
-        public async Task<string> GetUrlByIdAsync(int imageId)
+        public async Task<string> GetUrlByIdAsync(int imageId) // Retrieve package image URL by ImageID
         {
             using (var conn = _databaseHelper.GetConnection())
             {

@@ -1,6 +1,6 @@
-﻿using AdminPortal.Data;
-using AdminPortal.Models; 
-using AdminPortal.Services;
+﻿using be_general_support_api.Data;
+using be_general_support_api.Models; 
+using be_general_support_api.Services;
 using BCrypt.Net;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -24,6 +24,8 @@ public class AccountController : ControllerBase
     #endregion
 
     #region -- Login Post Method --
+    // Route: POST /api/Account/login
+    // This endpoint handles user login and JWT token generation
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginModel model)
         {
@@ -61,6 +63,8 @@ public class AccountController : ControllerBase
     #endregion
 
     #region -- Staff Department Get Method --
+    // Route: GET /api/Account/me
+    // This endpoint retrieves the logged-in user's details from JWT claims
     [Authorize] // This ensures only logged-in users can access this
     [HttpGet("me")] // Route: GET /api/Account/me
     public IActionResult GetMe()

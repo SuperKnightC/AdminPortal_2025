@@ -1,4 +1,4 @@
-﻿namespace AdminPortal.Models
+﻿namespace be_general_support_api.Models
 {
     //This model responsible for user login variable
 

@@ -1,11 +1,11 @@
 ﻿using System.Data;
 using Microsoft.Data.SqlClient;
-using AdminPortal.Models; //library and access
+using be_general_support_api.Models; 
 
-namespace AdminPortal.Data //declare namespace
+namespace be_general_support_api.Data 
 {
 
-    public class UserRepository //define this class
+    public class UserRepository 
     {
         //This repo handle user login and registration
 
@@ -17,24 +17,8 @@ namespace AdminPortal.Data //declare namespace
         }
         #endregion
 
-        #region -- Add User Method (not used) --
-        public async Task AddUserAsync(string email,string password) //receive credential
-        {
-            using (var conn = _databaseHelper.GetConnection()) //use dbHelper for sqlConn
-            {
-                await conn.OpenAsync(); //open the connection
-
-                var cmd = new SqlCommand("Insert into users(email,passwordHash) VALUES (@email,@password)", conn);//create queries
-                cmd.Parameters.AddWithValue("email", email);
-                cmd.Parameters.AddWithValue("password", password);
-
-                await cmd.ExecuteNonQueryAsync();//insert
-
-            }
-        }
-        #endregion
-
         #region -- Get User By Email Method --
+        //Used in Login to retrieve user details
         public async Task<AuthUser?> GetAuthUserByEmailAsync(string email)
         {
             using (var conn = _databaseHelper.GetConnection())
@@ -42,20 +26,20 @@ namespace AdminPortal.Data //declare namespace
                 await conn.OpenAsync();
 
                 var cmd = new SqlCommand(@"
-            SELECT 
-                a.AccID, 
-                a.Email, 
-                a.Password, 
-                u.staff_name, 
-                u.department 
-            FROM 
-                dbo.App_Account a
-            JOIN 
-                dbo.useru u ON a.AccID = u.account_id
-            WHERE 
-                a.Email = @email 
-                AND a.RecordStatus = 'Active' 
-                AND a.IsStaff = 'Y'", conn);
+                SELECT 
+                    a.AccID, 
+                    a.Email, 
+                    a.Password, 
+                    u.staff_name, 
+                    u.department 
+                FROM 
+                    dbo.App_Account a
+                JOIN 
+                    dbo.useru u ON a.AccID = u.account_id
+                WHERE 
+                    a.Email = @email 
+                    AND a.RecordStatus = 'Active' 
+                    AND a.IsStaff = 'Y'", conn);
 
                 cmd.Parameters.AddWithValue("@email", email);
                 using (var reader = await cmd.ExecuteReaderAsync())

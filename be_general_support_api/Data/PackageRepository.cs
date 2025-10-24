@@ -1,9 +1,10 @@
 ﻿using System.Data;
 using Microsoft.Data.SqlClient;
-using AdminPortal.Models;
+using be_general_support_api.Models;
 
-namespace AdminPortal.Data
+namespace be_general_support_api.Data
 {
+    // This Repo Handle Package
     public class PackageRepository
     {
         #region-- Database Helper --
@@ -15,6 +16,11 @@ namespace AdminPortal.Data
         #endregion
 
         #region -- Package Insert --
+        // Inserts a new package into the database
+        // Returns the newly created PackageID
+        // Used in the package creation process
+        // Calculates ValidDays based on effective and last valid dates
+        // Sets default values for certain fields
         public async Task<int> InsertPackage(PackageViewModel package, int createdUserId)
         {
             using (var conn = _databaseHelper.GetConnection())
@@ -67,6 +73,9 @@ namespace AdminPortal.Data
         #endregion
 
         #region-- Get Package By ID For Details --
+        // Retrieves a package by its ID, including creator and modifier names
+        // Used in the package details view
+        // Returns null if not found
         public async Task<Package?> GetPackageByIdAsync(int id)
         {
             Package package = null;
@@ -103,6 +112,9 @@ namespace AdminPortal.Data
         #endregion
 
         #region-- Get All Packages For Dashboard --
+        // Retrieves all packages with optional status filtering
+        // Supports "Active", "Show All", and other status filters
+        // Uses UNION ALL to combine results from live and staging tables as needed
         private const string PackageQueryFragment = @"
             SELECT
                 p.PackageID, 
@@ -181,6 +193,8 @@ namespace AdminPortal.Data
         #endregion
 
         #region-- Reject Package --
+        // Rejects a package by updating its status to "Rejected"
+        // and setting the ModifiedUserID to the user who performed the rejection
         public async Task RejectPackageAsync(int packageId, int rejectedByUserId)
         {
             using (var conn = _databaseHelper.GetConnection())
@@ -200,6 +214,7 @@ namespace AdminPortal.Data
         #endregion
 
         #region-- Approve Package --
+        // Approves a package by updating its status and copying data to App_PackageAO and App_PackageItemAO eg the live tables
         public async Task ApprovePackageAsync(int packageId, int approvedByUserId)
         {
             using (var conn = _databaseHelper.GetConnection())
@@ -336,9 +351,11 @@ namespace AdminPortal.Data
                 }
             }
         }
-        
+
         #endregion
+
         #region -- Duplicate Package --
+        // Duplicates a package and its items, setting the new package to "Draft" status
         public async Task<int> DuplicatePackageAsync(int originalPackageId, int newUserId)
         {
             using (var conn = _databaseHelper.GetConnection())
@@ -470,7 +487,10 @@ namespace AdminPortal.Data
             }
         }
         #endregion
+
         #region -- Map Package From Reader Helper Method --
+        // Helper method to map SqlDataReader to Package object
+        // Used in GetPackageByIdAsync and GetAllAsync
         private Package MapPackageFromReader(SqlDataReader reader)
         {
             var package = new Package
@@ -520,6 +540,8 @@ namespace AdminPortal.Data
         #endregion
 
         #region -- Update package status with UserID --
+        // Used to update status along with ModifiedUserID
+        // Used for simple status updates that do not require full approve/reject logic eg. "Draft" to "Pending"
         public async Task<bool> UpdatePackageStatusAsync(int packageId, string newStatus, int modifiedUserId)
         {
             using (var connection = _databaseHelper.GetConnection())
