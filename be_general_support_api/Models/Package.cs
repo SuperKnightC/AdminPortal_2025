@@ -32,7 +32,7 @@ namespace be_general_support_api.Models
         public DateTime LastValidDate { get; set; }
 
         public string? remark { get; set; }
-
+        public string? Remark2 { get; set; }
         public string? Nationality { get; set; }  // NEW
 
         public string? PackageNo { get; set; }
@@ -167,6 +167,8 @@ namespace be_general_support_api.Models
         public long ProductID { get; set; }
         public string? ImageID { get; set; }
         public string? Remark { get; set; }
+        public string? Remark2 { get; set; }
+        public string? Nationality { get; set; }
 
         [NotMapped]
         public string? CreatedByName { get; set; }
@@ -187,6 +189,7 @@ namespace be_general_support_api.Models
     public class StatusUpdateModel
     {
         public string Status { get; set; }
+        public string? FinanceRemark { get; set; }
     }
     #endregion
 }

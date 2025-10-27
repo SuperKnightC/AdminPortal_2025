@@ -247,7 +247,9 @@ public class DashboardController : ControllerBase
                 return Unauthorized("User ID is not available in token.");
             }
 
-            await _packageRepo.RejectPackageAsync(id, userId);
+            // --- THIS IS THE FIX ---
+            // Pass null for the financeRemark parameter as this endpoint doesn't provide one.
+            await _packageRepo.RejectPackageAsync(id, userId, null);
             return Ok(new { message = "Package rejected successfully." });
         }
         catch (Exception ex)

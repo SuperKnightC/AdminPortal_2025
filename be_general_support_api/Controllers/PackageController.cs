@@ -187,8 +187,9 @@ public class PackageController : ControllerBase
             }
             else if (model.Status == "Rejected")
             {
-                // Use the dedicated reject method
-                await _packageRepository.RejectPackageAsync(id, userId);
+                // --- THIS IS THE FIX ---
+                // Use the dedicated reject method, passing the remark
+                await _packageRepository.RejectPackageAsync(id, userId, model.FinanceRemark);
                 return Ok(new { message = "Package rejected successfully." });
             }
             else

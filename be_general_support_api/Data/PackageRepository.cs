@@ -38,12 +38,12 @@ namespace be_general_support_api.Data
                 PackageNo, Name, PackageType, Price, Point, ValidDays, DaysPass,
                 LastValidDate, Link, RecordStatus, CreatedDate, CreatedUserID,
                 ModifiedDate, ModifiedUserID, GroupEntityID, TerminalGroupID,
-                ProductID, ImageID, Remark 
+                ProductID, ImageID, Remark, Remark2 
                 ) VALUES (
                     @PackageNo, @Name, @PackageType, @Price, @Point, @ValidDays, @DaysPass,
                     @LastValidDate, @Link, @RecordStatus, GETDATE(), @CreatedUserID,
                     GETDATE(), @ModifiedUserID, @GroupEntityID, @TerminalGroupID,
-                    @ProductID, @ImageID, @Remark
+                    @ProductID, @ImageID, @Remark, @Remark2
                 );
                 SELECT SCOPE_IDENTITY();", conn);
 
@@ -53,7 +53,10 @@ namespace be_general_support_api.Data
                 cmd.Parameters.AddWithValue("@Point", package.Point);
                 cmd.Parameters.AddWithValue("@LastValidDate", package.LastValidDate);
                 cmd.Parameters.AddWithValue("@Remark", (object)package.remark ?? DBNull.Value);
-                
+
+                // --- ADDED/MODIFIED ---
+                cmd.Parameters.AddWithValue("@Remark2", (object)package.Remark2 ?? DBNull.Value); // For 2nd remark
+
                 cmd.Parameters.AddWithValue("@ValidDays", validDays);
                 cmd.Parameters.AddWithValue("@PackageNo", DBNull.Value);
                 cmd.Parameters.AddWithValue("@GroupEntityID", 1);
@@ -83,27 +86,63 @@ namespace be_general_support_api.Data
             {
                 await conn.OpenAsync();
 
-                var cmd = new SqlCommand(@"
+                // --- FIX: Prioritize App_PackageAO (Live) table ---
+                // 1. Try to find the package in the LIVE (App_PackageAO) table first.
+                var cmdLive = new SqlCommand(@"
                     SELECT
-                        p.*,
+                        p.PackageID, p.PackageNo, p.Name, p.PackageType, p.Price, p.Point, 
+                        p.ValidDays, p.DaysPass, p.LastValidDate, p.Link, p.RecordStatus, 
+                        p.CreatedDate, p.CreatedUserID, p.ModifiedDate, p.ModifiedUserID, 
+                        p.GroupEntityID, p.TerminalGroupID, p.ProductID, p.ImageID, p.Remark,
+                        p.Remark2, 
                         u_created.staff_name AS CreatedByName,
                         u_modified.staff_name AS ModifiedByName,
                         acc_created.FirstName AS CreatedByFirstName,
                         acc_modified.FirstName AS ModifiedByFirstName
-                    FROM Packages p
+                    FROM App_PackageAO p
                     LEFT JOIN useru u_created ON p.CreatedUserID = u_created.account_id
                     LEFT JOIN useru u_modified ON p.ModifiedUserID = u_modified.account_id
                     LEFT JOIN App_Account acc_created ON p.CreatedUserID = acc_created.AccID
                     LEFT JOIN App_Account acc_modified ON p.ModifiedUserID = acc_modified.AccID
                     WHERE p.PackageID = @PackageID", conn);
+                cmdLive.Parameters.AddWithValue("@PackageID", id);
 
-                cmd.Parameters.AddWithValue("@PackageID", id);
-
-                using (var reader = await cmd.ExecuteReaderAsync())
+                using (var reader = await cmdLive.ExecuteReaderAsync())
                 {
                     if (await reader.ReadAsync())
                     {
                         package = MapPackageFromReader(reader);
+                    }
+                }
+
+                // 2. If NOT found in live, try to find it in the STAGING (Packages) table.
+                if (package == null)
+                {
+                    var cmdStaging = new SqlCommand(@"
+                        SELECT
+                            p.PackageID, p.PackageNo, p.Name, p.PackageType, p.Price, p.Point, 
+                            p.ValidDays, p.DaysPass, p.LastValidDate, p.Link, p.RecordStatus, 
+                            p.CreatedDate, p.CreatedUserID, p.ModifiedDate, p.ModifiedUserID, 
+                            p.GroupEntityID, p.TerminalGroupID, p.ProductID, p.ImageID, p.Remark,
+                            NULL AS Remark2, -- Add NULL placeholder for the missing column
+                            u_created.staff_name AS CreatedByName,
+                            u_modified.staff_name AS ModifiedByName,
+                            acc_created.FirstName AS CreatedByFirstName,
+                            acc_modified.FirstName AS ModifiedByFirstName
+                        FROM Packages p
+                        LEFT JOIN useru u_created ON p.CreatedUserID = u_created.account_id
+                        LEFT JOIN useru u_modified ON p.ModifiedUserID = u_modified.account_id
+                        LEFT JOIN App_Account acc_created ON p.CreatedUserID = acc_created.AccID
+                        LEFT JOIN App_Account acc_modified ON p.ModifiedUserID = acc_modified.AccID
+                        WHERE p.PackageID = @PackageID", conn);
+                    cmdStaging.Parameters.AddWithValue("@PackageID", id);
+
+                    using (var reader = await cmdStaging.ExecuteReaderAsync())
+                    {
+                        if (await reader.ReadAsync())
+                        {
+                            package = MapPackageFromReader(reader);
+                        }
                     }
                 }
             }
@@ -137,6 +176,14 @@ namespace be_general_support_api.Data
                 p.ProductID, 
                 p.ImageID COLLATE DATABASE_DEFAULT AS ImageID, 
                 p.Remark COLLATE DATABASE_DEFAULT AS Remark,
+
+
+                p.Remark2 COLLATE DATABASE_DEFAULT AS Remark2, 
+                (SELECT TOP 1 pi.Nationality 
+                 FROM {1} pi 
+                 WHERE pi.PackageID = p.PackageID) COLLATE DATABASE_DEFAULT AS Nationality,
+
+
                 u_created.staff_name COLLATE DATABASE_DEFAULT AS CreatedByName,
                 u_modified.staff_name COLLATE DATABASE_DEFAULT AS ModifiedByName,
                 acc_created.FirstName COLLATE DATABASE_DEFAULT AS CreatedByFirstName,
@@ -161,19 +208,23 @@ namespace be_general_support_api.Data
                 if (statusFilter == "Active")
                 {
                     // 1. ACTIVE filter: Only show Approved packages from the LIVE (AO) table
-                    sql = string.Format(PackageQueryFragment, "App_PackageAO") + " WHERE p.RecordStatus = 'Approved'";
+                    // {0} = App_PackageAO, {1} = App_PackageItemAO
+                    sql = string.Format(PackageQueryFragment, "App_PackageAO", "App_PackageItemAO") + " WHERE p.RecordStatus = 'Approved'";
                 }
                 else if (statusFilter == "Show All")
                 {
                     // 2. SHOW ALL filter: Show Approved from LIVE (AO) + all NON-Approved from STAGING (Packages)
-                    string queryAO = string.Format(PackageQueryFragment, "App_PackageAO") + " WHERE p.RecordStatus = 'Approved'";
-                    string queryPackages = string.Format(PackageQueryFragment, "Packages") + " WHERE p.RecordStatus != 'Approved'";
+                    // {0} = App_PackageAO, {1} = App_PackageItemAO
+                    string queryAO = string.Format(PackageQueryFragment, "App_PackageAO", "App_PackageItemAO") + " WHERE p.RecordStatus = 'Approved'";
+                    // {0} = Packages, {1} = PackageItem
+                    string queryPackages = string.Format(PackageQueryFragment, "Packages", "PackageItem") + " WHERE p.RecordStatus != 'Approved'";
                     sql = $"{queryAO} UNION ALL {queryPackages}";
                 }
                 else
                 {
                     // 3. OTHER filters (Pending, Draft, etc.): Only show from STAGING (Packages)
-                    sql = string.Format(PackageQueryFragment, "Packages") + " WHERE p.RecordStatus = @Status";
+                    // {0} = Packages, {1} = PackageItem
+                    sql = string.Format(PackageQueryFragment, "Packages", "PackageItem") + " WHERE p.RecordStatus = @Status";
                     cmd.Parameters.AddWithValue("@Status", statusFilter);
                 }
 
@@ -195,7 +246,7 @@ namespace be_general_support_api.Data
         #region-- Reject Package --
         // Rejects a package by updating its status to "Rejected"
         // and setting the ModifiedUserID to the user who performed the rejection
-        public async Task RejectPackageAsync(int packageId, int rejectedByUserId)
+        public async Task RejectPackageAsync(int packageId, int rejectedByUserId, string? financeRemark)
         {
             using (var conn = _databaseHelper.GetConnection())
             {
@@ -204,10 +255,12 @@ namespace be_general_support_api.Data
                     @"UPDATE Packages 
                       SET RecordStatus = 'Rejected', 
                           ModifiedUserID = @ModifiedUserID, 
-                          ModifiedDate = GETDATE() 
+                          ModifiedDate = GETDATE(),
+                          Remark2 = @FinanceRemark
                       WHERE PackageID = @PackageID", conn);
                 cmd.Parameters.AddWithValue("@PackageID", packageId);
                 cmd.Parameters.AddWithValue("@ModifiedUserID", rejectedByUserId);
+                cmd.Parameters.AddWithValue("@FinanceRemark", (object)financeRemark ?? DBNull.Value); // Save remark to Remark2
                 await cmd.ExecuteNonQueryAsync();
             }
         }
@@ -366,6 +419,7 @@ namespace be_general_support_api.Data
                     try
                     {
                         // 1. Read the original package
+                        // --- MODIFIED: Ensure you select Remark2 from Packages table ---
                         var selectPackageCmd = new SqlCommand("SELECT * FROM Packages WHERE PackageID = @PackageID", conn, transaction);
                         selectPackageCmd.Parameters.AddWithValue("@PackageID", originalPackageId);
 
@@ -388,8 +442,9 @@ namespace be_general_support_api.Data
                                     TerminalGroupID = (int)reader["TerminalGroupID"],
                                     ProductID = (long)reader["ProductID"],
                                     ImageID = reader["ImageID"]?.ToString(),
-                                    Remark = reader["Remark"]?.ToString()
-                                    // We ignore Status, Created/Modified fields as they will be new
+                                    Remark = reader["Remark"]?.ToString(),
+                                    // --- ADDED ---
+                                    Remark2 = reader.HasColumn("Remark2") && reader["Remark2"] is not DBNull ? reader["Remark2"].ToString() : null
                                 };
                             }
                         }
@@ -427,12 +482,12 @@ namespace be_general_support_api.Data
                                 Name, PackageType, Price, Point, ValidDays, DaysPass,
                                 LastValidDate, Link, RecordStatus, CreatedDate, CreatedUserID,
                                 ModifiedDate, ModifiedUserID, GroupEntityID, TerminalGroupID,
-                                ProductID, ImageID, Remark
+                                ProductID, ImageID, Remark, Remark2
                             ) VALUES (
                                 @Name, @PackageType, @Price, @Point, @ValidDays, @DaysPass,
                                 @LastValidDate, @Link, 'Draft', GETDATE(), @CreatedUserID,
                                 GETDATE(), @ModifiedUserID, @GroupEntityID, @TerminalGroupID,
-                                @ProductID, @ImageID, @Remark
+                                @ProductID, @ImageID, @Remark, @Remark2
                             );
                             SELECT SCOPE_IDENTITY();", conn, transaction);
 
@@ -451,6 +506,8 @@ namespace be_general_support_api.Data
                         insertPackageCmd.Parameters.AddWithValue("@ProductID", packageToCopy.ProductID);
                         insertPackageCmd.Parameters.AddWithValue("@ImageID", (object)packageToCopy.ImageID ?? DBNull.Value);
                         insertPackageCmd.Parameters.AddWithValue("@Remark", (object)packageToCopy.Remark ?? DBNull.Value);
+                        // --- ADDED ---
+                        insertPackageCmd.Parameters.AddWithValue("@Remark2", (object)packageToCopy.Remark2 ?? DBNull.Value);
 
                         int newPackageId = Convert.ToInt32(await insertPackageCmd.ExecuteScalarAsync());
 
@@ -468,7 +525,7 @@ namespace be_general_support_api.Data
                             insertItemCmd.Parameters.AddWithValue("@ItemPoint", (object)item.Point ?? DBNull.Value);
                             insertItemCmd.Parameters.AddWithValue("@AgeCategory", item.AgeCategory);
                             insertItemCmd.Parameters.AddWithValue("@EntryQty", item.EntryQty);
-                            insertItemCmd.Parameters.AddWithValue("@CreatedUserID", newUserId); // Use new user ID
+                            insertPackageCmd.Parameters.AddWithValue("@CreatedUserID", newUserId); // Use new user ID
                             insertItemCmd.Parameters.AddWithValue("@Nationality", (object)item.Nationality ?? DBNull.Value);
 
                             await insertItemCmd.ExecuteNonQueryAsync();
@@ -515,8 +572,15 @@ namespace be_general_support_api.Data
                 ProductID = reader["ProductID"] is DBNull ? 0 : (long)reader["ProductID"],
                 ImageID = reader["ImageID"] is DBNull ? null : reader["ImageID"].ToString(),
                 Remark = reader["Remark"] is DBNull ? null : reader["Remark"].ToString(),
-                
+
             };
+
+            if (reader.HasColumn("Remark2"))
+            {
+                package.Remark2 = reader["Remark2"] is DBNull ? null : reader["Remark2"].ToString();
+            }
+            
+
 
             if (reader.HasColumn("CreatedByName"))
             {
