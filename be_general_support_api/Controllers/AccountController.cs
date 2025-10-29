@@ -48,29 +48,17 @@ public class AccountController : ControllerBase
         }
     }
 
-    [HttpPost("logout")]
-    public IActionResult Logout()
-    {
-        // Clear the cookie by setting an expired one
-        Response.Cookies.Delete("authToken", new CookieOptions
-        {
-            HttpOnly = true,
-            Secure = true,
-            SameSite = SameSiteMode.None
-        });
-        return Ok(new { message = "Logged out successfully" });
-    }
     #endregion
 
     #region -- Staff Department Get Method --
     // Route: GET /api/Account/me
     // This endpoint retrieves the logged-in user's details from JWT claims
-    [Authorize] // This ensures only logged-in users can access this
-    [HttpGet("me")] // Route: GET /api/Account/me
+    [Authorize] 
+    [HttpGet("me")] 
     public IActionResult GetMe()
     {
         Console.WriteLine(">>> GET /api/Account/me reached");
-        var userEmail = User.Claims.FirstOrDefault(c => // important
+        var userEmail = User.Claims.FirstOrDefault(c => 
             c.Type == "sub" ||
             c.Type == ClaimTypes.NameIdentifier)?.Value;
         var userName = User.Claims.FirstOrDefault(c => c.Type == "name")?.Value;

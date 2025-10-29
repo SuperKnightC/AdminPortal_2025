@@ -58,11 +58,11 @@ namespace be_general_support_api.Models
             {
                 if (item.itemType == "Entry")
                 {
-                    calculatedPrice += item.Value * item.EntryQty;
+                    calculatedPrice += item.Value;
                 }
                 else if (item.itemType == "Point" || item.itemType == "Reward")
                 {
-                    calculatedPoints += (int)item.Value * item.EntryQty;
+                    calculatedPoints += (int)item.Value;
                 }
             }
 

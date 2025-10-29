@@ -53,10 +53,7 @@ namespace be_general_support_api.Data
                 cmd.Parameters.AddWithValue("@Point", package.Point);
                 cmd.Parameters.AddWithValue("@LastValidDate", package.LastValidDate);
                 cmd.Parameters.AddWithValue("@Remark", (object)package.remark ?? DBNull.Value);
-
-                // --- ADDED/MODIFIED ---
-                cmd.Parameters.AddWithValue("@Remark2", (object)package.Remark2 ?? DBNull.Value); // For 2nd remark
-
+                cmd.Parameters.AddWithValue("@Remark2", DBNull.Value);
                 cmd.Parameters.AddWithValue("@ValidDays", validDays);
                 cmd.Parameters.AddWithValue("@PackageNo", DBNull.Value);
                 cmd.Parameters.AddWithValue("@GroupEntityID", 1);
@@ -86,7 +83,6 @@ namespace be_general_support_api.Data
             {
                 await conn.OpenAsync();
 
-                // --- FIX: Prioritize App_PackageAO (Live) table ---
                 // 1. Try to find the package in the LIVE (App_PackageAO) table first.
                 var cmdLive = new SqlCommand(@"
                     SELECT
@@ -262,7 +258,7 @@ namespace be_general_support_api.Data
                       WHERE PackageID = @PackageID", conn);
                 cmd.Parameters.AddWithValue("@PackageID", packageId);
                 cmd.Parameters.AddWithValue("@ModifiedUserID", rejectedByUserId);
-                cmd.Parameters.AddWithValue("@FinanceRemark", (object)financeRemark ?? DBNull.Value); // Save remark to Remark2
+                cmd.Parameters.AddWithValue("@FinanceRemark", (object)financeRemark ?? DBNull.Value);
                 await cmd.ExecuteNonQueryAsync();
             }
         }
@@ -334,7 +330,7 @@ namespace be_general_support_api.Data
                               GroupEntityID, TerminalGroupID, ProductID, ImageID, Remark, Remark2) 
                               VALUES (@PackageNo, @Name, @PackageType, @Price, @Point, @ValidDays, @DaysPass, 
                                       @LastValidDate, @Link, @RecordStatus, @CreatedDate, @CreatedUserID, @ModifiedDate, 
-                                      @ModifiedUserID, @GroupEntityID, @TerminalGroupID, @ProductID, @ImageID, @Remark, @Remark2), 
+                                      @ModifiedUserID, @GroupEntityID, @TerminalGroupID, @ProductID, @ImageID, @Remark, @Remark2);
                               SELECT SCOPE_IDENTITY(); ", conn, transaction);
 
                         insertPackageCmd.Parameters.AddWithValue("@PackageNo", (object)packageToCopy.PackageNo ?? DBNull.Value);
@@ -356,7 +352,7 @@ namespace be_general_support_api.Data
                         insertPackageCmd.Parameters.AddWithValue("@ProductID", packageToCopy.ProductID);
                         insertPackageCmd.Parameters.AddWithValue("@ImageID", (object)packageToCopy.ImageID ?? DBNull.Value);
                         insertPackageCmd.Parameters.AddWithValue("@Remark", (object)packageToCopy.Remark ?? DBNull.Value);
-                        insertPackageCmd.Parameters.AddWithValue("@Remark2", (object)packageToCopy.Remark2 ?? DBNull.Value); 
+                        insertPackageCmd.Parameters.AddWithValue("@Remark2", DBNull.Value); 
                         int newPackageId = Convert.ToInt32(await insertPackageCmd.ExecuteScalarAsync());
                         await insertPackageCmd.ExecuteNonQueryAsync();
 
@@ -383,7 +379,7 @@ namespace be_general_support_api.Data
                             }
                         }
 
-                        // 5. Insert items into App_PackageItemAO - ✅ FIX: Fixed parameter name
+                        // 5. Insert items into App_PackageItemAO
                         foreach (var item in itemsToCopy)
                         {
                             var insertItemCmd = new SqlCommand(
@@ -426,7 +422,6 @@ namespace be_general_support_api.Data
                     try
                     {
                         // 1. Read the original package
-                        // --- MODIFIED: Ensure you select Remark2 from Packages table ---
                         var selectPackageCmd = new SqlCommand("SELECT * FROM Packages WHERE PackageID = @PackageID", conn, transaction);
                         selectPackageCmd.Parameters.AddWithValue("@PackageID", originalPackageId);
 
@@ -450,7 +445,6 @@ namespace be_general_support_api.Data
                                     ProductID = (long)reader["ProductID"],
                                     ImageID = reader["ImageID"]?.ToString(),
                                     Remark = reader["Remark"]?.ToString(),
-                                    // --- ADDED ---
                                     Remark2 = reader.HasColumn("Remark2") && reader["Remark2"] is not DBNull ? reader["Remark2"].ToString() : null
                                 };
                             }
@@ -478,7 +472,6 @@ namespace be_general_support_api.Data
                                     AgeCategory = reader["AgeCategory"].ToString(),
                                     EntryQty = (int)reader["EntryQty"],
                                     Nationality = reader.HasColumn("Nationality") && reader["Nationality"] is not DBNull ? reader["Nationality"].ToString() : null
-                                    // We ignore CreatedUserID as it will be new
                                 });
                             }
                         }
@@ -513,7 +506,6 @@ namespace be_general_support_api.Data
                         insertPackageCmd.Parameters.AddWithValue("@ProductID", packageToCopy.ProductID);
                         insertPackageCmd.Parameters.AddWithValue("@ImageID", (object)packageToCopy.ImageID ?? DBNull.Value);
                         insertPackageCmd.Parameters.AddWithValue("@Remark", (object)packageToCopy.Remark ?? DBNull.Value);
-                        // --- ADDED ---
                         insertPackageCmd.Parameters.AddWithValue("@Remark2", (object)packageToCopy.Remark2 ?? DBNull.Value);
 
                         int newPackageId = Convert.ToInt32(await insertPackageCmd.ExecuteScalarAsync());
@@ -527,7 +519,7 @@ namespace be_general_support_api.Data
 
                             insertItemCmd.Parameters.AddWithValue("@PackageID", newPackageId);
                             insertItemCmd.Parameters.AddWithValue("@ItemName", item.ItemName);
-                            insertItemCmd.Parameters.AddWithValue("@ItemType", item.itemType); // This is correct for staging table
+                            insertItemCmd.Parameters.AddWithValue("@ItemType", item.itemType); 
                             insertItemCmd.Parameters.AddWithValue("@ItemPrice", (object)item.Price ?? DBNull.Value);
                             insertItemCmd.Parameters.AddWithValue("@ItemPoint", (object)item.Point ?? DBNull.Value);
                             insertItemCmd.Parameters.AddWithValue("@AgeCategory", item.AgeCategory);
@@ -609,7 +601,7 @@ namespace be_general_support_api.Data
             return package;
         }
         #endregion
-
+            
         #region -- Update package status with UserID --
         // Used to update status along with ModifiedUserID
         // Used for simple status updates that do not require full approve/reject logic eg. "Draft" to "Pending"

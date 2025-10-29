@@ -90,7 +90,6 @@ namespace be_general_support_api.Data
                             Price = reader["ItemPrice"] as decimal?,
                             Point = reader["ItemPoint"] as int?,
                             AgeCategory = reader["AgeCategory"].ToString(),
-                            // Use EntryQty (or PackageQty if that's the correct column name in App_PackageItemAO)
                             EntryQty = (int)reader["EntryQty"],
                             Nationality = reader.HasColumn("Nationality") && reader["Nationality"] is not DBNull ? reader["Nationality"].ToString() : null
                         });
@@ -207,7 +206,6 @@ namespace be_general_support_api.Data
                 var cmd = new SqlCommand("SELECT ImageURL FROM packageImages WHERE ImageID = @ImageID", conn);
                 cmd.Parameters.AddWithValue("@ImageID", imageId);
 
-                // ExecuteScalarAsync is efficient for getting a single value
                 object result = await cmd.ExecuteScalarAsync();
 
                 // Return the URL string, or null if no image was found

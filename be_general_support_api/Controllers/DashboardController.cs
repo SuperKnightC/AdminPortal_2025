@@ -201,9 +201,11 @@ public class DashboardController : ControllerBase
             Remark = packageData.Remark,
             CreatedDate = packageData.CreatedDate,
 
-            // NEW: Add the submitted by and approved by fields
+           
             SubmittedBy = packageData.CreatedByFirstName ?? "N/A",
-            ApprovedBy = packageData.ModifiedByFirstName ?? "N/A",
+            ApprovedBy = (packageData.Status == "Approved" || packageData.Status == "Rejected")
+             ? packageData.ModifiedByFirstName ?? "N/A"
+             : "N/A",
 
             Items = packageItems.Select(item => new PackageItemDetail
             {

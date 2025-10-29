@@ -42,8 +42,6 @@ namespace be_general_support_api.Models
         public string ImageUrl { get; set; }
         public string Remark { get; set; }
         public DateTime CreatedDate { get; set; }
-
-        // NEW: Add these properties
         public string SubmittedBy { get; set; }  // CreatedByFirstName
         public string ApprovedBy { get; set; }   // ModifiedByFirstName
 

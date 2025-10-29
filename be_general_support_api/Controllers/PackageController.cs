@@ -62,8 +62,7 @@ public class PackageController : ControllerBase
         if (file == null || file.Length == 0)
             return BadRequest("No file uploaded.");
 
-        // In a real app, you'd save to Azure Blob, S3, etc.
-        // For now, we save to wwwroot/images/packages
+        // save to wwwroot/images/packages
         var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "images", "packages");
         if (!Directory.Exists(uploadsFolder))
             Directory.CreateDirectory(uploadsFolder);
@@ -206,8 +205,18 @@ public class PackageController : ControllerBase
         }
         catch (Exception ex)
         {
-            // Log the exception
-            return StatusCode(500, new { message = $"An internal server error occurred: {ex.Message}" });
+            // BREAKPOINT 7 ⭐ - Check if exception is thrown
+            Console.WriteLine($"!!! CONTROLLER ERROR: {ex.Message}");
+            Console.WriteLine($"!!! Stack Trace: {ex.StackTrace}");
+            if (ex.InnerException != null)
+            {
+                Console.WriteLine($"!!! Inner Exception: {ex.InnerException.Message}");
+            }
+            return StatusCode(500, new
+            {
+                message = $"An internal server error occurred: {ex.Message}",
+                stackTrace = ex.StackTrace
+            });
         }
     }
     #endregion

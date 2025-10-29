@@ -48,7 +48,6 @@ namespace be_general_support_api.Data
                     {
                         return new AuthUser
                         {
-                            // Safely read all potentially null columns
                             AccountId = (int)reader["AccID"],
                             Email = reader["Email"] is DBNull ? string.Empty : reader["Email"].ToString(),
                             PasswordHash = reader["Password"] is DBNull ? string.Empty : reader["Password"].ToString(),
