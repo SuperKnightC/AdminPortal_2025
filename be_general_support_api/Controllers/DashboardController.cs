@@ -100,11 +100,12 @@ public class DashboardController : ControllerBase
                     ImageUrl = imageUrl,
                     PackageType = package.PackageType,
                     Category = items.FirstOrDefault()?.AgeCategory ?? "N/A",
+                    Nationality = items.FirstOrDefault()?.Nationality ?? "N/A",
                     Status = package.Status,
                     Price = totalPrice,
                     Point = totalPoints,
                     DateCreated = package.CreatedDate,
-                    EntryQty = items.Sum(item => item.EntryQty) // Sum the quantity from all items
+                    EntryQty = items.Sum(item => item.EntryQty)
                 });
             }
 
@@ -144,7 +145,17 @@ public class DashboardController : ControllerBase
             return Forbid(); // Returns 403 Forbidden
         }
 
-        var packageItems = await _packageItemRepo.GetItemsByPackageIdAsync(id); // Retrieve package items by PackageID
+        List<PackageItem> packageItems;
+        if (packageData.Status == "Approved")
+        {
+            // If package is Approved, get items from App_PackageItemAO
+            packageItems = await _packageItemRepo.GetApprovedItemsByPackageIdAsync(id);
+        }
+        else
+        {
+            // Otherwise (Pending, Draft, etc.), get items from the staging PackageItem table
+            packageItems = await _packageItemRepo.GetItemsByPackageIdAsync(id);
+        }
         var baseUrl = $"{Request.Scheme}://{Request.Host}";
 
         // CODE FOR HANDLING THE ImageID STRING ---
@@ -179,6 +190,7 @@ public class DashboardController : ControllerBase
             PackageType = packageData.PackageType,
             TotalEntryQty = packageItems.Sum(item => item.EntryQty),
             AgeCategory = packageItems.FirstOrDefault()?.AgeCategory ?? "N/A",
+            Nationality = packageItems.FirstOrDefault()?.Nationality ?? "N/A",
             Price = totalPrice,
             Point = totalPoints,
             EffectiveDate = calculatedEffectiveDate,
@@ -199,7 +211,8 @@ public class DashboardController : ControllerBase
                 Price = item.Price ?? 0,
                 Point = item.Point ?? 0,
                 Category = item.AgeCategory,
-                EntryQty = item.EntryQty
+                EntryQty = item.EntryQty,
+                Nationality = item.Nationality ?? "All"
             }).ToList()
         };
 
@@ -207,56 +220,5 @@ public class DashboardController : ControllerBase
     }
     #endregion
 
-    #region -- Approve Package Post Method --
-    // Route: POST /api/dashboard/approve/5 the 5 is the package ID
-    // This endpoint approves a package and transfers it to the approved tables
-    [HttpPost("approve/{id}")]
-    public async Task<IActionResult> Approve(int id)
-    {
-        try
-        {
-            // Get current user ID
-            var userIdString = User.FindFirst("userId")?.Value;
-            if (string.IsNullOrEmpty(userIdString) || !int.TryParse(userIdString, out int userId))
-            {
-                return Unauthorized("User ID is not available in token.");
-            }
-
-            await _packageRepo.ApprovePackageAsync(id, userId);
-            return Ok(new { message = "Package approved and transferred successfully." });
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, $"An error occurred while approving the package: {ex.Message}");
-        }
-    }
-    #endregion
-
-    #region -- Reject Package Post Method --
-    // Route: POST /api/dashboard/reject/5 the 5 is the package ID
-    // This endpoint rejects a package
-    [HttpPost("reject/{id}")]
-    public async Task<IActionResult> Reject(int id)
-    {
-        try
-        {
-            // Get current user ID
-            var userIdString = User.FindFirst("userId")?.Value;
-            if (string.IsNullOrEmpty(userIdString) || !int.TryParse(userIdString, out int userId))
-            {
-                return Unauthorized("User ID is not available in token.");
-            }
-
-            // --- THIS IS THE FIX ---
-            // Pass null for the financeRemark parameter as this endpoint doesn't provide one.
-            await _packageRepo.RejectPackageAsync(id, userId, null);
-            return Ok(new { message = "Package rejected successfully." });
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, $"An error occurred while rejecting the package: {ex.Message}");
-        }
-    }
-    #endregion
-
+   
 }

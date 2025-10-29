@@ -12,13 +12,14 @@ namespace be_general_support_api.Models
         public int Id { get; set; }
         public string Name { get; set; }
         public string PackageType { get; set; }
-        public int EntryQty { get; set; }       // Changed from Quantity
+        public int EntryQty { get; set; }
         public string Category { get; set; }
+        public string? Nationality { get; set; } // ✅ ADDED
         public string ImageUrl { get; set; }
         public string Status { get; set; }
         public decimal Price { get; set; }
         public int Point { get; set; }
-        public DateTime DateCreated { get; set; } 
+        public DateTime DateCreated { get; set; }
     }
     #endregion
 
@@ -33,6 +34,7 @@ namespace be_general_support_api.Models
         public decimal Price { get; set; }
         public int Point { get; set; }
         public string AgeCategory { get; set; }
+        public string Nationality { get; set; }
         public DateTime EffectiveDate { get; set; }
         public DateTime LastValidDate { get; set; }
         public int ValidDays { get; set; }
@@ -57,6 +59,7 @@ namespace be_general_support_api.Models
         public decimal Price { get; set; }
         public int Point { get; set; }
         public int EntryQty { get; set; }
+        public string Nationality { get; set; }
         public string Category { get; set; }
     }
     #endregion

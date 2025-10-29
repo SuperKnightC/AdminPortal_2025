@@ -111,6 +111,7 @@ public class PackageController : ControllerBase
             foreach (var item in model.Items)
             {
                 item.Nationality = model.Nationality;
+                item.AgeCategory = model.AgeCategory;
                 item.Price = null;
                 item.Point = null;
 

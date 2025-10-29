@@ -33,7 +33,8 @@ namespace be_general_support_api.Models
 
         public string? remark { get; set; }
         public string? Remark2 { get; set; }
-        public string? Nationality { get; set; }  // NEW
+        public string? Nationality { get; set; }
+        public string? AgeCategory { get; set; }
 
         public string? PackageNo { get; set; }
 

@@ -94,7 +94,8 @@ namespace be_general_support_api.Data
                         p.ValidDays, p.DaysPass, p.LastValidDate, p.Link, p.RecordStatus, 
                         p.CreatedDate, p.CreatedUserID, p.ModifiedDate, p.ModifiedUserID, 
                         p.GroupEntityID, p.TerminalGroupID, p.ProductID, p.ImageID, p.Remark,
-                        p.Remark2, 
+                        p.Remark2,
+                        (SELECT TOP 1 pi.Nationality FROM App_PackageItemAO pi WHERE pi.PackageID = p.PackageID) AS Nationality,
                         u_created.staff_name AS CreatedByName,
                         u_modified.staff_name AS ModifiedByName,
                         acc_created.FirstName AS CreatedByFirstName,
@@ -124,7 +125,8 @@ namespace be_general_support_api.Data
                             p.ValidDays, p.DaysPass, p.LastValidDate, p.Link, p.RecordStatus, 
                             p.CreatedDate, p.CreatedUserID, p.ModifiedDate, p.ModifiedUserID, 
                             p.GroupEntityID, p.TerminalGroupID, p.ProductID, p.ImageID, p.Remark,
-                            NULL AS Remark2, -- Add NULL placeholder for the missing column
+                            NULL AS Remark2, 
+                            (SELECT TOP 1 pi.Nationality FROM PackageItem pi WHERE pi.PackageID = p.PackageID) AS Nationality,
                             u_created.staff_name AS CreatedByName,
                             u_modified.staff_name AS ModifiedByName,
                             acc_created.FirstName AS CreatedByFirstName,
@@ -277,18 +279,18 @@ namespace be_general_support_api.Data
                 {
                     try
                     {
-                        // 1. Update the package status and ModifiedUserID in Packages table
+                        // 1. Update package status
                         var updatePackageCmd = new SqlCommand(
                             @"UPDATE Packages 
-                              SET RecordStatus = 'Approved', 
-                                  ModifiedUserID = @ModifiedUserID, 
-                                  ModifiedDate = GETDATE() 
-                              WHERE PackageID = @PackageID", conn, transaction);
+                      SET RecordStatus = 'Approved', 
+                          ModifiedUserID = @ModifiedUserID, 
+                          ModifiedDate = GETDATE() 
+                      WHERE PackageID = @PackageID", conn, transaction);
                         updatePackageCmd.Parameters.AddWithValue("@PackageID", packageId);
                         updatePackageCmd.Parameters.AddWithValue("@ModifiedUserID", approvedByUserId);
                         await updatePackageCmd.ExecuteNonQueryAsync();
 
-                        // 2. Read the package data
+                        // 2. Read package data
                         var selectPackageCmd = new SqlCommand("SELECT * FROM Packages WHERE PackageID = @PackageID", conn, transaction);
                         selectPackageCmd.Parameters.AddWithValue("@PackageID", packageId);
 
@@ -319,16 +321,21 @@ namespace be_general_support_api.Data
                                     ProductID = (long)reader["ProductID"],
                                     ImageID = reader["ImageID"]?.ToString(),
                                     Remark = reader["Remark"]?.ToString(),
-                                    
+                                    Remark2 = reader.HasColumn("Remark2") && reader["Remark2"] is not DBNull ? reader["Remark2"].ToString() : null
                                 };
                             }
                         }
                         if (packageToCopy == null) throw new Exception("Package not found.");
 
-                        // 3. Insert into App_PackageAO
+                        // 3. Insert into App_PackageAO 
                         var insertPackageCmd = new SqlCommand(
-                            @"INSERT INTO App_PackageAO (PackageNo, Name, PackageType, Price, Point, ValidDays, DaysPass, LastValidDate, Link, RecordStatus, CreatedDate, CreatedUserID, ModifiedDate, ModifiedUserID, GroupEntityID, TerminalGroupID, ProductID, ImageID, Remark ) 
-                              VALUES (@PackageNo, @Name, @PackageType, @Price, @Point, @ValidDays, @DaysPass, @LastValidDate, @Link, @RecordStatus, @CreatedDate, @CreatedUserID, @ModifiedDate, @ModifiedUserID, @GroupEntityID, @TerminalGroupID, @ProductID, @ImageID, @Remark )", conn, transaction);
+                            @"INSERT INTO App_PackageAO (PackageNo, Name, PackageType, Price, Point, ValidDays, DaysPass, 
+                              LastValidDate, Link, RecordStatus, CreatedDate, CreatedUserID, ModifiedDate, ModifiedUserID, 
+                              GroupEntityID, TerminalGroupID, ProductID, ImageID, Remark, Remark2) 
+                              VALUES (@PackageNo, @Name, @PackageType, @Price, @Point, @ValidDays, @DaysPass, 
+                                      @LastValidDate, @Link, @RecordStatus, @CreatedDate, @CreatedUserID, @ModifiedDate, 
+                                      @ModifiedUserID, @GroupEntityID, @TerminalGroupID, @ProductID, @ImageID, @Remark, @Remark2), 
+                              SELECT SCOPE_IDENTITY(); ", conn, transaction);
 
                         insertPackageCmd.Parameters.AddWithValue("@PackageNo", (object)packageToCopy.PackageNo ?? DBNull.Value);
                         insertPackageCmd.Parameters.AddWithValue("@Name", packageToCopy.Name);
@@ -349,7 +356,8 @@ namespace be_general_support_api.Data
                         insertPackageCmd.Parameters.AddWithValue("@ProductID", packageToCopy.ProductID);
                         insertPackageCmd.Parameters.AddWithValue("@ImageID", (object)packageToCopy.ImageID ?? DBNull.Value);
                         insertPackageCmd.Parameters.AddWithValue("@Remark", (object)packageToCopy.Remark ?? DBNull.Value);
-                      
+                        insertPackageCmd.Parameters.AddWithValue("@Remark2", (object)packageToCopy.Remark2 ?? DBNull.Value); 
+                        int newPackageId = Convert.ToInt32(await insertPackageCmd.ExecuteScalarAsync());
                         await insertPackageCmd.ExecuteNonQueryAsync();
 
                         // 4. Read package items
@@ -365,7 +373,7 @@ namespace be_general_support_api.Data
                                 {
                                     PackageID = (int)reader["PackageID"],
                                     ItemName = reader["ItemName"].ToString(),
-                                    itemType = reader["itemType"].ToString(),
+                                    itemType = reader["ItemType"].ToString(),
                                     Price = reader["ItemPrice"] as decimal?,
                                     Point = reader["ItemPoint"] as int?,
                                     AgeCategory = reader["AgeCategory"].ToString(),
@@ -375,16 +383,16 @@ namespace be_general_support_api.Data
                             }
                         }
 
-                        // 5. Insert items into App_PackageItemAO
+                        // 5. Insert items into App_PackageItemAO - ✅ FIX: Fixed parameter name
                         foreach (var item in itemsToCopy)
                         {
                             var insertItemCmd = new SqlCommand(
                                 @"INSERT INTO App_PackageItemAO (PackageID, PackageQty, ItemName, ItemType, ItemPrice, ItemPoint, AgeCategory, EntryQty, Nationality) 
-                                  VALUES (@PackageID, @PackageQty, @ItemName, @itemType, @ItemPrice, @ItemPoint, @AgeCategory, @EntryQty, @Nationality)", conn, transaction);
+                          VALUES (@PackageID, @PackageQty, @ItemName, @ItemType, @ItemPrice, @ItemPoint, @AgeCategory, @EntryQty, @Nationality)", conn, transaction);
 
-                            insertItemCmd.Parameters.AddWithValue("@PackageID", item.PackageID);
+                            insertItemCmd.Parameters.AddWithValue("@PackageID", newPackageId);
                             insertItemCmd.Parameters.AddWithValue("@ItemName", item.ItemName);
-                            insertItemCmd.Parameters.AddWithValue("@itemType", item.itemType);
+                            insertItemCmd.Parameters.AddWithValue("@ItemType", item.itemType); 
                             insertItemCmd.Parameters.AddWithValue("@ItemPrice", (object)item.Price ?? DBNull.Value);
                             insertItemCmd.Parameters.AddWithValue("@ItemPoint", (object)item.Point ?? DBNull.Value);
                             insertItemCmd.Parameters.AddWithValue("@AgeCategory", item.AgeCategory);
@@ -404,7 +412,6 @@ namespace be_general_support_api.Data
                 }
             }
         }
-
         #endregion
 
         #region -- Duplicate Package --
@@ -465,7 +472,7 @@ namespace be_general_support_api.Data
                                 itemsToCopy.Add(new PackageItem
                                 {
                                     ItemName = reader["ItemName"].ToString(),
-                                    itemType = reader["itemType"].ToString(),
+                                    itemType = reader["ItemType"].ToString(),
                                     Price = reader["ItemPrice"] as decimal?,
                                     Point = reader["ItemPoint"] as int?,
                                     AgeCategory = reader["AgeCategory"].ToString(),
@@ -515,17 +522,17 @@ namespace be_general_support_api.Data
                         foreach (var item in itemsToCopy)
                         {
                             var insertItemCmd = new SqlCommand(
-                                @"INSERT INTO PackageItem (PackageID, ItemName, itemType, ItemPrice, ItemPoint, AgeCategory, EntryQty, CreatedUserID, Nationality)
-                                  VALUES (@PackageID, @ItemName, @itemType, @ItemPrice, @ItemPoint, @AgeCategory, @EntryQty, @CreatedUserID, @Nationality)", conn, transaction);
+                                @"INSERT INTO PackageItem (PackageID, ItemName, ItemType, ItemPrice, ItemPoint, AgeCategory, EntryQty, CreatedUserID, Nationality)
+                                VALUES (@PackageID, @ItemName, @ItemType, @ItemPrice, @ItemPoint, @AgeCategory, @EntryQty, @CreatedUserID, @Nationality)", conn, transaction);
 
-                            insertItemCmd.Parameters.AddWithValue("@PackageID", newPackageId); // Use new ID
+                            insertItemCmd.Parameters.AddWithValue("@PackageID", newPackageId);
                             insertItemCmd.Parameters.AddWithValue("@ItemName", item.ItemName);
-                            insertItemCmd.Parameters.AddWithValue("@itemType", item.itemType);
+                            insertItemCmd.Parameters.AddWithValue("@ItemType", item.itemType); // This is correct for staging table
                             insertItemCmd.Parameters.AddWithValue("@ItemPrice", (object)item.Price ?? DBNull.Value);
                             insertItemCmd.Parameters.AddWithValue("@ItemPoint", (object)item.Point ?? DBNull.Value);
                             insertItemCmd.Parameters.AddWithValue("@AgeCategory", item.AgeCategory);
                             insertItemCmd.Parameters.AddWithValue("@EntryQty", item.EntryQty);
-                            insertPackageCmd.Parameters.AddWithValue("@CreatedUserID", newUserId); // Use new user ID
+                            insertItemCmd.Parameters.AddWithValue("@CreatedUserID", newUserId); 
                             insertItemCmd.Parameters.AddWithValue("@Nationality", (object)item.Nationality ?? DBNull.Value);
 
                             await insertItemCmd.ExecuteNonQueryAsync();
